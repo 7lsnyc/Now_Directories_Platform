@@ -1,0 +1,31 @@
+name: Weekly Supabase Backup
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'  # Every Sunday at 3am UTC
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v3
+
+      - name: Set up PostgreSQL client
+        run: sudo apt-get install postgresql-client
+
+      - name: Create Backup Folder
+        run: mkdir -p backups
+
+      - name: Dump Supabase Database
+        run: |
+          export FILENAME=backup_$(date +"%Y-%m-%d_%H-%M").sql
+          pg_dump "$SUPABASE_DB_URL" --no-owner --no-privileges --format=plain --file="backups/$FILENAME"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: supabase-backup
+          path: backups/
