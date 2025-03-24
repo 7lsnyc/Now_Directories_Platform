@@ -1,0 +1,12 @@
+{
+  "framework": "nextjs",
+  "installCommand": "npm ci",
+  "buildCommand": "next build",
+  "devCommand": "next dev",
+  "outputDirectory": ".next",
+  "regions": ["iad1"],
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://abwzqybjyiwlyvligmhn.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFid3pxeWJqeWl3bHl2bGlnbWhuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI3NzI1MTgsImV4cCI6MjA1ODM0ODUxOH0.Ytr0RcXEhbLYg9WOhNNyxlqzpNsqWhLo7JopKoAc8gM"
+  }
+}
