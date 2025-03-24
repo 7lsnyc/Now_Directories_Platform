@@ -4,11 +4,6 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../lib/supabase';
 
-// Create supabase client directly in the component
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-for-build.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key-for-build-process';
-const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
-
 type Notary = Database['public']['Tables']['notaries']['Row'];
 
 export default function NotaryList() {
@@ -20,6 +15,17 @@ export default function NotaryList() {
     async function fetchNotaries() {
       try {
         setLoading(true);
+        
+        // Create supabase client inside the effect to avoid Webpack module issues
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        
+        // Only create client if we have proper environment variables
+        if (!supabaseUrl || !supabaseAnonKey) {
+          throw new Error('Missing Supabase environment variables');
+        }
+        
+        const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
         
         const { data, error } = await supabase
           .from('notaries')
@@ -50,34 +56,37 @@ export default function NotaryList() {
     return <div className="p-4 text-red-500">{error}</div>;
   }
 
+  if (notaries.length === 0) {
+    return <div className="p-4">No notaries found.</div>;
+  }
+
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Notaries</h2>
-      
-      {notaries.length === 0 ? (
-        <p>No notaries found.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {notaries.map((notary) => (
-            <div key={notary.id} className="border rounded-lg p-4 shadow-sm">
-              <h3 className="text-lg font-semibold">{notary.name}</h3>
-              <p className="text-gray-600">
-                {notary.city}, {notary.state}
-              </p>
-              <div className="mt-2">
-                <span className="text-yellow-500">★</span> {notary.rating} ({notary.review_count} reviews)
-              </div>
-              <div className="mt-2">
-                <strong>Services:</strong>{' '}
-                {notary.services.join(', ')}
-              </div>
-              {notary.about && (
-                <p className="mt-2 text-sm text-gray-700">{notary.about}</p>
-              )}
-            </div>
-          ))}
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+      {notaries.map((notary) => (
+        <div 
+          key={notary.id} 
+          className="border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow"
+          data-testid="notary-card"
+        >
+          <h3 className="font-bold text-lg">{notary.name}</h3>
+          <div className="text-sm text-gray-600 mb-2">
+            {notary.city}, {notary.state} {notary.zip}
+          </div>
+          <p className="mt-2">{notary.address}</p>
+          <p className="mt-2">{notary.phone}</p>
+          <p className="mt-2">{notary.email}</p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {notary.services?.map((service, index) => (
+              <span 
+                key={index} 
+                className="bg-theme-primary text-white text-xs px-2 py-1 rounded"
+              >
+                {service}
+              </span>
+            ))}
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
