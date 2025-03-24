@@ -1,8 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import supabase from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../lib/supabase';
+
+// Create supabase client directly in the component
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-for-build.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key-for-build-process';
+const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
 type Notary = Database['public']['Tables']['notaries']['Row'];
 
