@@ -1,0 +1,35 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`DirectoryPage Snapshots should render correctly with notary theme 1`] = `
+<div>
+  <div
+    class="theme-notary"
+    data-testid="theme-provider"
+    style="--color-primary: #1e40af; --color-secondary: #1e3a8a; --color-accent: #f97316; --color-primary-text: #ffffff; --color-secondary-text: #ffffff; --color-accent-text: #ffffff;"
+  >
+    <div
+      data-testid="directory-page"
+    >
+      Mocked Directory Page for 
+      notary
+    </div>
+  </div>
+</div>
+`;
+
+exports[`DirectoryPage Snapshots should render correctly with passport theme 1`] = `
+<div>
+  <div
+    class="theme-passport"
+    data-testid="theme-provider"
+    style="--color-primary: #10803d; --color-secondary: #065f46; --color-accent: #ca8a04; --color-primary-text: #ffffff; --color-secondary-text: #ffffff; --color-accent-text: #ffffff;"
+  >
+    <div
+      data-testid="directory-page"
+    >
+      Mocked Directory Page for 
+      passport
+    </div>
+  </div>
+</div>
+`;
