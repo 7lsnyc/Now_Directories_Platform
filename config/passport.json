@@ -1,0 +1,65 @@
+{
+  "name": "passport",
+  "title": "Passport Services Directory",
+  "description": "Find passport expediting services, photo locations, and application assistance near you.",
+  "logo": {
+    "path": "/logos/passport-logo.svg",
+    "alt": "Passport Services Directory"
+  },
+  "theme": {
+    "name": "green-passport",
+    "colors": {
+      "primary": "#15803d",
+      "secondary": "#166534",
+      "accent": "#ea580c"
+    }
+  },
+  "hero": {
+    "heading": "Get Your Passport Fast — Find Services Near You",
+    "subheading": "Connect with expedited passport services, photo locations, and application assistance in your area."
+  },
+  "serviceTypes": [
+    "Expedited Processing",
+    "Passport Photos",
+    "Application Assistance",
+    "Renewal Services"
+  ],
+  "navigation": {
+    "header": {
+      "ctaButton": {
+        "text": "Add Your Service",
+        "url": "/add-service"
+      }
+    },
+    "footer": {
+      "quickLinks": [
+        { "text": "Home", "url": "/" },
+        { "text": "Find Services", "url": "/search" },
+        { "text": "About", "url": "/about" },
+        { "text": "Contact", "url": "/contact" }
+      ],
+      "services": [
+        { "text": "Expedited Processing", "url": "/services/expedited" },
+        { "text": "Passport Photos", "url": "/services/photos" },
+        { "text": "Application Assistance", "url": "/services/assistance" },
+        { "text": "Renewal Services", "url": "/services/renewal" }
+      ],
+      "support": [
+        { "text": "FAQ", "url": "/faq" },
+        { "text": "Privacy Policy", "url": "/privacy" },
+        { "text": "Terms of Service", "url": "/terms" },
+        { "text": "Add Your Service", "url": "/add-service" }
+      ]
+    }
+  },
+  "seo": {
+    "title": "Passport Services Directory - Find Fast Passport Services Near You",
+    "description": "Find passport expediting services, photo locations, and application assistance in your area for fast, reliable passport processing."
+  },
+  "features": {
+    "search": true,
+    "filter": true,
+    "sort": true,
+    "pagination": true
+  }
+}

@@ -4,6 +4,106 @@ import { createClient } from '@supabase/supabase-js';
 export type Database = {
   public: {
     Tables: {
+      directories: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          title: string;
+          description: string;
+          created_at: string;
+          updated_at: string;
+          theme: {
+            colors: {
+              primary: string;
+              secondary: string;
+              accent: string;
+            }
+          };
+          logo?: {
+            path: string;
+            alt: string;
+          };
+          navigation?: {
+            header?: {
+              ctaButton?: {
+                text: string;
+                url: string;
+              }
+            };
+            footer?: {
+              quickLinks?: Array<{ text: string; url: string }>;
+              services?: Array<{ text: string; url: string }>;
+              support?: Array<{ text: string; url: string }>;
+            }
+          };
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          name: string;
+          title: string;
+          description: string;
+          created_at?: string;
+          updated_at?: string;
+          theme: {
+            colors: {
+              primary: string;
+              secondary: string;
+              accent: string;
+            }
+          };
+          logo?: {
+            path: string;
+            alt: string;
+          };
+          navigation?: {
+            header?: {
+              ctaButton?: {
+                text: string;
+                url: string;
+              }
+            };
+            footer?: {
+              quickLinks?: Array<{ text: string; url: string }>;
+              services?: Array<{ text: string; url: string }>;
+              support?: Array<{ text: string; url: string }>;
+            }
+          };
+        };
+        Update: {
+          id?: string;
+          slug?: string;
+          name?: string;
+          title?: string;
+          description?: string;
+          updated_at?: string;
+          theme?: {
+            colors: {
+              primary?: string;
+              secondary?: string;
+              accent?: string;
+            }
+          };
+          logo?: {
+            path?: string;
+            alt?: string;
+          };
+          navigation?: {
+            header?: {
+              ctaButton?: {
+                text?: string;
+                url?: string;
+              }
+            };
+            footer?: {
+              quickLinks?: Array<{ text: string; url: string }>;
+              services?: Array<{ text: string; url: string }>;
+              support?: Array<{ text: string; url: string }>;
+            }
+          };
+        };
+      },
       notaries: {
         Row: {
           id: string;

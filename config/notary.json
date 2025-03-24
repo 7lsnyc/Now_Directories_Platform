@@ -1,2 +1,65 @@
-// config/notary.json — placeholder for MVP starter
-...
+{
+  "name": "notary",
+  "title": "Notary Finder Now",
+  "description": "Find qualified notaries in your area offering mobile, 24-hour, and free services.",
+  "logo": {
+    "path": "/logos/notary-logo.svg",
+    "alt": "Notary Finder Now"
+  },
+  "theme": {
+    "name": "blue-notary",
+    "colors": {
+      "primary": "#1e40af",
+      "secondary": "#1e3a8a",
+      "accent": "#f97316"
+    }
+  },
+  "hero": {
+    "heading": "Find a Qualified Notary Near You — Now!",
+    "subheading": "Connect with mobile, 24-hour, and free notary services in your area instantly."
+  },
+  "serviceTypes": [
+    "Mobile Notaries",
+    "24-Hour Availability",
+    "Remote Notaries",
+    "Free Services"
+  ],
+  "navigation": {
+    "header": {
+      "ctaButton": {
+        "text": "Request Featured Listing",
+        "url": "/request-listing"
+      }
+    },
+    "footer": {
+      "quickLinks": [
+        { "text": "Home", "url": "/" },
+        { "text": "Find a Notary", "url": "/search" },
+        { "text": "About Us", "url": "/about" },
+        { "text": "Contact", "url": "/contact" }
+      ],
+      "services": [
+        { "text": "Mobile Notaries", "url": "/services/mobile" },
+        { "text": "24-Hour Availability", "url": "/services/24-hour" },
+        { "text": "Remote Notaries", "url": "/services/remote" },
+        { "text": "Free Services", "url": "/services/free" }
+      ],
+      "support": [
+        { "text": "FAQ", "url": "/faq" },
+        { "text": "Privacy Policy", "url": "/privacy" },
+        { "text": "Terms of Service", "url": "/terms" },
+        { "text": "Request Featured Listing", "url": "/request-listing" }
+      ]
+    }
+  },
+  "seo": {
+    "title": "Notary Finder Now - Find Qualified Mobile Notaries Near You",
+    "description": "Connect with mobile, 24-hour, and free notary services in your area. Trusted notaries available when you need them."
+  },
+  "features": {
+    "search": true,
+    "filter": true,
+    "sort": true,
+    "pagination": true
+  }
+}
