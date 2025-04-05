@@ -2,7 +2,7 @@ import { DirectoryCardProps } from '../components/platform/DirectoryCard';
 
 // Directory data with exact color classes and text from the reference
 export const platformDirectories: DirectoryCardProps[] = [
-  { icon: "Shield", title: "Notary Finder Now", description: "Find a qualified notary", color: "bg-blue-600", isNew: true, url: "/directory/notary" },
+  { icon: "ShieldCheck", title: "Notary Finder Now", description: "Find a qualified notary", color: "bg-blue-600", isNew: true, url: "/directory/notary" },
   { icon: "Tooth", title: "Emergency Dentists", description: "24/7 dental care services", color: "bg-blue-500", url: "/directory/dentists" },
   { icon: "Paw", title: "24/7 Veterinarians", description: "Urgent care clinics", color: "bg-emerald-500", url: "/directory/vets" },
   { icon: "Key", title: "Emergency Locksmiths", description: "24/7 locksmith services", color: "bg-red-500", url: "/directory/locksmiths" },

@@ -1,18 +1,19 @@
 import React from 'react';
 import { 
-  Shield, 
-  Stethoscope, 
-  Cat, 
+  Shield,
+  ShieldCheck,  
+  Stethoscope,  
+  PawPrint,    
   Key, 
   Zap, 
   Wrench, 
-  Droplets, 
+  Droplet,    
   Stamp, 
   Home, 
   Truck, 
   Car, 
   Skull, 
-  TreePine, 
+  TreePine,   
   Baby, 
   MonitorSmartphone
 } from 'lucide-react';
@@ -31,15 +32,16 @@ export interface DirectoryCardProps {
  * Cards are clickable and open the directory URL in a new tab
  */
 export default function DirectoryCard({ icon, title, description, color, url, isNew = false }: DirectoryCardProps) {
-  // Map icon strings to Lucide icon components
+  // Map icon strings to Lucide icon components with exact names from the library
   const iconMap: Record<string, React.ElementType> = {
     'Shield': Shield,
+    'ShieldCheck': ShieldCheck,  
     'Tooth': Stethoscope,
-    'Paw': Cat,
+    'Paw': PawPrint,
     'Key': Key,
     'Zap': Zap,
     'Wrench': Wrench,
-    'Droplet': Droplets,
+    'Droplet': Droplet,
     'Stamp': Stamp,
     'Home': Home,
     'Truck': Truck,
