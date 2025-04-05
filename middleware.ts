@@ -6,10 +6,13 @@ export const domainMap: Record<string, string> = {
   'notaryfindernow.com': 'notary',
   'notary.localhost': 'notary',
   'notary.localhost:3003': 'notary',
+  'notary.localhost:3004': 'notary',
   'passporthelpnow.com': 'passport',
   'passport.localhost': 'passport',
   'passport.localhost:3003': 'passport',
+  'passport.localhost:3004': 'passport',
   'localhost:3003': 'platform', // Default for local development
+  'localhost:3004': 'platform', // Default for local development
   'nowdirectories.com': 'platform', // Main aggregator site
 };
 
@@ -27,12 +30,25 @@ export function middleware(request: NextRequest) {
   // Set the directory slug as a header so we can access it in our app
   requestHeaders.set('x-directory-slug', directorySlug);
   
-  // Return the response with the modified headers
-  return NextResponse.next({
+  // Create a response object to modify
+  const response = NextResponse.next({
     request: {
       headers: requestHeaders,
     },
   });
+  
+  // Also set a cookie with the host for auth contexts where headers aren't accessible
+  // This allows our auth functions to still know which directory we're in
+  response.cookies.set('x-host', host, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'strict',
+    secure: process.env.NODE_ENV === 'production',
+    // Short expiry as this is just for the current session
+    maxAge: 60 * 60 * 24, // 1 day
+  });
+  
+  return response;
 }
 
 // Configure the middleware to run on all routes
