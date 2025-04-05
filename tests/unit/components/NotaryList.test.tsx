@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
-import { act } from 'react-dom/test-utils';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import NotaryList from '@/components/NotaryList';
 
 // Mock the entire module
@@ -105,7 +104,7 @@ describe('NotaryList', () => {
     const { setLoading, setError } = (NotaryList as any).testSetters;
     
     // Update component state to show an error
-    await act(async () => {
+    act(() => {
       setLoading(false);
       setError('Failed to fetch notaries. Please try again later.');
     });
@@ -120,7 +119,7 @@ describe('NotaryList', () => {
     const { setLoading, setNotaries } = (NotaryList as any).testSetters;
     
     // Update component state to show no notaries found
-    await act(async () => {
+    act(() => {
       setLoading(false);
       setNotaries([]);
     });
@@ -135,7 +134,7 @@ describe('NotaryList', () => {
     const { setLoading, setNotaries } = (NotaryList as any).testSetters;
     
     // Update component state to show notaries
-    await act(async () => {
+    act(() => {
       setLoading(false);
       setNotaries(mockNotaries);
     });
