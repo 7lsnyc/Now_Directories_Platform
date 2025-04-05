@@ -17,7 +17,7 @@ export default function FooterPlatform() {
             <h3 className="text-xl font-bold text-white">Now Directories</h3>
           </div>
           <p className="text-sm">
-            Connecting professionals with clients through specialized directories for every industry.
+            Your guide to urgent local services
           </p>
         </div>
 
