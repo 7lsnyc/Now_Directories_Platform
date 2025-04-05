@@ -2,6 +2,7 @@ import '../styles/globals.css';
 import type { Metadata } from 'next';
 import { loadConfig } from '@/lib/config/loadConfig';
 import ThemeProvider from '@/components/ThemeProvider';
+import { headers } from 'next/headers';
 
 export const metadata: Metadata = {
   title: 'Now Directories Platform',
@@ -13,8 +14,12 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Load default notary config for the main site
-  const config = loadConfig('notary');
+  // Get directory slug from the request headers set by middleware
+  const headersList = headers();
+  const directorySlug = headersList.get('x-directory-slug') || 'notary';
+  
+  // Load configuration for the current directory based on the slug
+  const config = loadConfig(directorySlug);
   
   return (
     <html lang="en">
