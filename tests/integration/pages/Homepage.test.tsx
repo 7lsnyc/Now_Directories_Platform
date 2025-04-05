@@ -1,143 +1,130 @@
 import { render, screen } from '@testing-library/react';
-import { act } from 'react';
 import '@testing-library/jest-dom';
+import { FaClock } from 'react-icons/fa';
 
-// Import components to avoid typescript errors
-import HeaderPlatform from '@/components/platform/HeaderPlatform';
-import HeroSection from '@/components/platform/HeroSection';
-import DirectoryCard from '@/components/platform/DirectoryCard';
-import FooterPlatform from '@/components/platform/FooterPlatform';
-
-// Mock the page component since we might not be able to import it directly in tests
-// This is a simplified version that will be overridden in the tests
-jest.mock('@/app/page', () => {
+// Mock Next.js components
+jest.mock('next/link', () => {
   return {
     __esModule: true,
-    default: () => <div data-testid="mock-homepage">Mock Homepage</div>
+    default: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => (
+      <a href={href} className={className} data-testid="mock-link">
+        {children}
+      </a>
+    ),
   };
 });
 
-// Mock the components we want to test
-jest.mock('@/components/platform/HeaderPlatform', () => {
-  return {
-    __esModule: true,
-    default: () => <header data-testid="header-component">Now Directories Header</header>
-  };
-});
+// Create a custom render for the homepage with mocked components
+const renderHomepage = () => {
+  // Import the real component
+  const HomePage = require('@/app/page').default;
+  
+  return render(<HomePage />);
+};
 
-jest.mock('@/components/platform/HeroSection', () => {
-  return {
-    __esModule: true,
-    default: () => (
-      <section data-testid="hero-component">
-        <h1>Curated Directories for Life's Emergencies</h1>
-      </section>
-    )
-  };
-});
+// Mock the homepage components to provide test hooks and simplify testing
+jest.mock('@/components/platform/HeroSection', () => () => (
+  <section data-testid="hero-section">
+    <h1>Curated Directories for Life's Emergencies</h1>
+    <p>Now Directories is a portfolio of profitable, high-intent local directories</p>
+  </section>
+));
 
-jest.mock('@/components/platform/DirectoryCard', () => {
-  return {
-    __esModule: true,
-    default: ({ title, description, icon, color, url }: { title: string; description: string; icon?: string; color?: string; url?: string }) => (
-      <div data-testid="directory-card">
-        <h3>{title}</h3>
-        <p>{description}</p>
-      </div>
-    )
-  };
-});
+jest.mock('@/components/platform/DirectoriesGrid', () => () => (
+  <div data-testid="directories-grid">
+    <div data-testid="directory-card">Notary Finder</div>
+    <div data-testid="directory-card">Emergency Dentists</div>
+  </div>
+));
 
-jest.mock('@/components/platform/FooterPlatform', () => {
-  return {
-    __esModule: true,
-    default: () => <footer data-testid="footer-component">Your guide to urgent local services</footer>
-  };
-});
+jest.mock('@/components/platform/FooterPlatform', () => () => (
+  <footer data-testid="footer-component">
+    Footer content
+  </footer>
+));
 
-/**
- * Integration tests for the platform homepage
- * Tests the presence and arrangement of key components
- */
-describe('Platform Homepage', () => {
-  // Import the real page component after all mocks are set up
-  let HomePage: any;
+jest.mock('react-icons/fa', () => ({
+  FaClock: () => <div data-testid="clock-icon" />,
+}));
 
-  beforeAll(async () => {
-    // Dynamic import to get our mocked HomePage
-    const homepageModule = await import('@/app/page');
-    HomePage = homepageModule.default;
-  });
+describe('Homepage', () => {
+  it('renders the complete homepage structure', () => {
+    const { container } = renderHomepage();
 
-  it('renders component structure correctly when using mocks', () => {
-    render(
-      <>
-        <div data-testid="header-container"><HeaderPlatform /></div>
-        <div data-testid="hero-container"><HeroSection /></div>
-        <div data-testid="directory-cards-container">
-          <DirectoryCard 
-            title="Notary Finder" 
-            description="Find qualified notaries" 
-            icon="ShieldCheck" 
-            color="bg-blue-600" 
-            url="/notary" 
-          />
-          <DirectoryCard 
-            title="Passport Services" 
-            description="Expedited passport services" 
-            icon="Stamp" 
-            color="bg-blue-500" 
-            url="/passport" 
-          />
-        </div>
-        <div data-testid="footer-container"><FooterPlatform /></div>
-      </>
-    );
-
-    // Check that each component renders its content correctly
-    expect(screen.getByTestId('header-component')).toBeInTheDocument();
+    // Verify basic structure
+    expect(screen.getByText('Now Directories')).toBeInTheDocument();
+    expect(screen.getByText('Login / Signup')).toBeInTheDocument();
     expect(screen.getByText("Curated Directories for Life's Emergencies")).toBeInTheDocument();
-    expect(screen.getByText('Notary Finder')).toBeInTheDocument();
-    expect(screen.getByText('Passport Services')).toBeInTheDocument();
+    expect(screen.getByText('Our Directories')).toBeInTheDocument();
+    
+    // Verify the divider exists with correct classes
+    const divider = container.querySelector('.border-t.border-gray-700');
+    expect(divider).toBeInTheDocument();
+    
+    // Verify that DirectoriesGrid component is rendered
+    expect(screen.getByTestId('directories-grid')).toBeInTheDocument();
+    
+    // Verify that FooterPlatform component is rendered
     expect(screen.getByTestId('footer-component')).toBeInTheDocument();
-    expect(screen.getByText('Your guide to urgent local services')).toBeInTheDocument();
   });
-
-  it('has components in the correct order', () => {
-    const { container } = render(
-      <>
-        <div data-testid="header-container"><HeaderPlatform /></div>
-        <main>
-          <div data-testid="hero-container"><HeroSection /></div>
-          <div data-testid="directory-cards-container">
-            <DirectoryCard 
-              title="Notary Finder" 
-              description="Find qualified notaries" 
-              icon="ShieldCheck" 
-              color="bg-blue-600" 
-              url="/notary" 
-            />
-            <DirectoryCard 
-              title="Passport Services" 
-              description="Expedited passport services" 
-              icon="Stamp" 
-              color="bg-blue-500" 
-              url="/passport" 
-            />
-          </div>
-        </main>
-        <div data-testid="footer-container"><FooterPlatform /></div>
-      </>
-    );
-
-    const header = screen.getByTestId('header-container');
-    const main = container.querySelector('main');
-    const footer = screen.getByTestId('footer-container');
-
-    // Check that header comes before main, and main comes before footer
-    if (header && main && footer) {
-      expect(header.compareDocumentPosition(main)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(main.compareDocumentPosition(footer)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  
+  it('includes all required navigation links', () => {
+    renderHomepage();
+    
+    // Check for header navigation links
+    const aboutLink = screen.getByText('About');
+    const contactLink = screen.getByText('Contact');
+    const investorsLink = screen.getByText('For Investors');
+    const loginLink = screen.getByText('Login / Signup');
+    
+    expect(aboutLink).toBeInTheDocument();
+    expect(contactLink).toBeInTheDocument();
+    expect(investorsLink).toBeInTheDocument();
+    expect(loginLink).toBeInTheDocument();
+    
+    // Verify links have the correct destinations
+    expect(aboutLink.closest('a')).toHaveAttribute('href', '/about');
+    expect(contactLink.closest('a')).toHaveAttribute('href', '/contact');
+    expect(investorsLink.closest('a')).toHaveAttribute('href', '/for-investors');
+    expect(loginLink.closest('a')).toHaveAttribute('href', '/login');
+  });
+  
+  it('has components in the correct sequential order', () => {
+    const { container } = renderHomepage();
+    
+    // Check structural hierarchy - elements should appear in this order:
+    // 1. Header (with Nav)
+    // 2. Hero Section
+    // 3. Divider
+    // 4. Directories Section (with heading)
+    // 5. Footer
+    
+    const header = container.querySelector('header');
+    const heroSection = screen.getByTestId('hero-section');
+    const divider = container.querySelector('.border-t.border-gray-700');
+    const directoriesSection = screen.getByText('Our Directories').closest('section');
+    const footer = screen.getByTestId('footer-component');
+    
+    // All elements should exist
+    expect(header).toBeInTheDocument();
+    expect(heroSection).toBeInTheDocument();
+    expect(divider).toBeInTheDocument();
+    expect(directoriesSection).toBeInTheDocument();
+    expect(footer).toBeInTheDocument();
+    
+    // Now check their order (using compareDocumentPosition)
+    if (header && heroSection && divider && directoriesSection && footer) {
+      // Header comes before hero
+      expect(header.compareDocumentPosition(heroSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      
+      // Hero comes before divider
+      expect(heroSection.compareDocumentPosition(divider) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      
+      // Divider comes before directories section
+      expect(divider.compareDocumentPosition(directoriesSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      
+      // Directories section comes before footer
+      expect(directoriesSection.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
   });
 });
