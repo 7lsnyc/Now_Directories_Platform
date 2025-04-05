@@ -1,82 +1,72 @@
 import React from 'react';
-import Link from 'next/link';
 import { 
   Shield, 
-  Wrench, 
+  Stethoscope, 
+  Cat, 
   Key, 
   Zap, 
+  Wrench, 
   Droplets, 
-  BadgePercent, 
-  Plane, 
   Stamp, 
+  Home, 
   Truck, 
   Car, 
-  HardHat, 
+  Skull, 
   TreePine, 
-  Trash2, 
-  Baby as BabyIcon, 
-  MonitorSmartphone, 
-  Hammer, 
-  Clock
+  Baby, 
+  MonitorSmartphone
 } from 'lucide-react';
 
 export interface DirectoryCardProps {
-  title: string;
-  tagline: string;
   icon: string;
+  title: string;
+  description: string;
   color: string;
   url: string;
   isNew?: boolean;
 }
 
 /**
- * Directory card component for displaying individual directory entries
- * Includes icon, title, tagline and optional "NEW" badge
+ * Directory card component displaying a single directory with icon, title and description
+ * Cards are clickable and open the directory URL in a new tab
  */
-export default function DirectoryCard({ title, tagline, icon, color, url, isNew = false }: DirectoryCardProps) {
-  // Map of icon names to Lucide icon components
+export default function DirectoryCard({ icon, title, description, color, url, isNew = false }: DirectoryCardProps) {
+  // Map icon strings to Lucide icon components
   const iconMap: Record<string, React.ElementType> = {
-    shield: Shield,
-    notary: Stamp,
-    plumbing: Wrench,
-    locksmith: Key,
-    electrical: Zap,
-    hvac: Wrench,
-    water: Droplets,
-    bands: BadgePercent,
-    passport: Plane,
-    visa: Stamp,
-    cleaning: Trash2,
-    towing: Car,
-    repair: Hammer,
-    tree: TreePine,
-    support: BabyIcon,
-    it: MonitorSmartphone,
-    handyman: HardHat,
-    clock: Clock
+    'Shield': Shield,
+    'Tooth': Stethoscope,
+    'Paw': Cat,
+    'Key': Key,
+    'Zap': Zap,
+    'Wrench': Wrench,
+    'Droplet': Droplets,
+    'Stamp': Stamp,
+    'Home': Home,
+    'Truck': Truck,
+    'Car': Car,
+    'Skull': Skull,
+    'Tree': TreePine,
+    'Baby': Baby,
+    'MonitorSmartphone': MonitorSmartphone
   };
-
-  // Get the correct icon or fallback to Shield
-  const IconComponent = iconMap[icon.toLowerCase()] || Shield;
+  
+  // Get the icon component or default to Shield
+  const IconComponent = iconMap[icon] || Shield;
 
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${color} rounded-xl p-4 min-h-[100px] text-white flex flex-col justify-between relative hover:opacity-90 transition-opacity`}
+      className={`${color} relative p-6 rounded-lg transition-transform hover:scale-105`}
     >
-      <div>
-        <div className="flex items-start mb-2">
-          <IconComponent className="w-6 h-6 text-white mr-2 mt-0.5" />
-          <h3 className="text-lg font-semibold">{title}</h3>
-        </div>
-        <p className="text-sm text-white/80">{tagline}</p>
-      </div>
+      <IconComponent className="w-8 h-8 text-white mb-3" />
+      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
+      <p className="text-sm text-white/80">{description}</p>
       
       {isNew && (
-        <span className="absolute top-2 right-2 bg-white text-black text-xs font-bold rounded px-2 py-0.5 uppercase">
-          New
+        <span className="absolute top-3 right-3 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+          NEW
         </span>
       )}
     </a>

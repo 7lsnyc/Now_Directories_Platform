@@ -36,18 +36,18 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Hero Section - Using our new component */}
+      {/* Hero Section */}
       <HeroSection />
 
-      {/* Directory Grid - Using our new component */}
+      {/* Directories Section - Pixel Perfect Implementation */}
       <section className="py-12">
         <div className="max-w-[1200px] mx-auto px-6">
-          <h2 className="text-2xl font-semibold mb-8 text-center">Our Directories</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Our Directories</h2>
           <DirectoriesGrid />
         </div>
       </section>
 
-      {/* Footer - Using our new component */}
+      {/* Footer */}
       <FooterPlatform />
     </div>
   );
