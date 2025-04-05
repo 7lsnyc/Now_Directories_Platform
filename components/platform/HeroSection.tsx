@@ -9,7 +9,7 @@ export default function HeroSection() {
     <section className="w-full">
       <div className="max-w-5xl mx-auto py-16 px-6 text-center">
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
-          The Platform for Curated, Local Service Directories
+          Curated Directories for Life's Emergencies
         </h1>
         
         <p className="text-gray-300 text-base md:text-lg max-w-3xl mx-auto mb-8">
