@@ -13,8 +13,7 @@ export default function HeroSection() {
         </h1>
         
         <p className="text-gray-300 text-base md:text-lg max-w-3xl mx-auto mb-8">
-          Now Directories is a platform designed to connect users with local services, powered by our 
-          multi-tenant architecture with shared business logic and infrastructure.
+          Now Directories is a portfolio of profitable, high-intent local directories powered by our own custom platform. The business is SEO-validated, monetized, and systematized — with clear expansion paths and product-led growth opportunities.
         </p>
         
         <Link 
