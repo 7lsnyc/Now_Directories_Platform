@@ -1,6 +1,7 @@
 import HeroSection from '@/components/platform/HeroSection';
 import DirectoriesGrid from '@/components/platform/DirectoriesGrid';
 import FooterPlatform from '@/components/platform/FooterPlatform';
+import HeaderPlatform from '@/components/platform/HeaderPlatform';
 
 /**
  * Platform homepage for Now Directories
@@ -8,10 +9,15 @@ import FooterPlatform from '@/components/platform/FooterPlatform';
  */
 export default function PlatformHomePage() {
   return (
-    <main>
-      <HeroSection />
-      <DirectoriesGrid />
+    <div className="bg-black text-white min-h-screen flex flex-col">
+      <HeaderPlatform />
+      
+      <main className="flex-grow">
+        <HeroSection />
+        <DirectoriesGrid />
+      </main>
+      
       <FooterPlatform />
-    </main>
+    </div>
   );
 }
