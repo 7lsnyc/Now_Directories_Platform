@@ -1,17 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Mock Response for Node environment
+global.Response = jest.fn() as any;
+
 // Mock the Supabase client
 jest.mock('@supabase/supabase-js', () => {
-  const mockQueryResponse = jest.fn();
+  const mockSelectFn = jest.fn().mockReturnThis();
+  const mockEqFn = jest.fn().mockReturnThis();
+  
   return {
     createClient: jest.fn(() => ({
       auth: {
         setSession: jest.fn(),
       },
       from: jest.fn(() => ({
-        select: jest.fn(() => ({
-          eq: mockQueryResponse,
-        })),
+        select: mockSelectFn,
         insert: jest.fn(() => ({
           select: jest.fn(),
         })),
@@ -38,13 +41,23 @@ describe('RLS Policy Integration', () => {
       refresh_token: 'fake-refresh-token',
     });
     
+    // Create a mock for the full query chain
+    const mockEq = jest.fn().mockResolvedValue({ data: [], error: null });
+    const mockSelect = jest.fn().mockReturnValue({ eq: mockEq });
+    
+    // Apply the mock to the from result
+    supabaseClient.from = jest.fn().mockReturnValue({ 
+      select: mockSelect 
+    });
+    
     // Attempt to query data
-    await supabaseClient.from('profiles').select('*').eq('id', '123');
+    const result = await supabaseClient.from('profiles').select('*').eq('id', '123');
     
     // Verify that the query was made (the RLS policy would filter this in a real environment)
     expect(supabaseClient.from).toHaveBeenCalledWith('profiles');
-    expect(supabaseClient.from().select).toHaveBeenCalledWith('*');
-    expect(supabaseClient.from().select().eq).toHaveBeenCalledWith('id', '123');
+    expect(mockSelect).toHaveBeenCalledWith('*');
+    expect(mockEq).toHaveBeenCalledWith('id', '123');
+    expect(result).toEqual({ data: [], error: null });
   });
   
   // This is a more comprehensive test that would be run in a real Supabase environment
