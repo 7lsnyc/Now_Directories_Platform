@@ -60,14 +60,15 @@ export default function DirectoryCard({ icon, title, description, color, url, is
       href={url}
       target="_blank"
       rel="noopener noreferrer"
-      className={`${color} relative p-6 rounded-lg transition-transform hover:scale-105`}
+      className={`${color} relative p-4 sm:p-6 rounded-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white/50 flex flex-col h-full`}
+      aria-label={`${title} - ${description}`}
     >
-      <IconComponent className="w-8 h-8 text-white mb-3" />
-      <h3 className="text-lg font-semibold text-white mb-1">{title}</h3>
-      <p className="text-sm text-white/80">{description}</p>
+      <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-white mb-2 sm:mb-3" />
+      <h3 className="text-base sm:text-lg font-semibold text-white mb-1">{title}</h3>
+      <p className="text-xs sm:text-sm text-white/90">{description}</p>
       
       {isNew && (
-        <span className="absolute top-3 right-3 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+        <span className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
           NEW
         </span>
       )}
