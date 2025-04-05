@@ -40,6 +40,44 @@ You can also manually trigger the deployment workflow:
 4. Select the branch you want to deploy
 5. Click "Run workflow"
 
+## Environment Variable Management
+
+The platform uses an optimized environment variable system (`lib/env.ts`) that:
+- Pre-computes values at import time to reduce runtime overhead
+- Provides friendly error messages when critical variables are missing
+- Maintains strict type safety for all variables
+- Inlines non-sensitive variables in next.config.js for performance
+
+### Critical Environment Variables
+- `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anonymous API key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (server-side only)
+
+### Optional Environment Variables
+- `DEFAULT_DIRECTORY_SLUG` - Default directory to use (defaults to "notary")
+- `ENABLE_ANALYTICS` - Enable/disable analytics (defaults to true in production)
+- `DEBUG_MODE` - Enable/disable debug features (defaults to true in development)
+- `API_TIMEOUT_MS` - API request timeout in milliseconds (defaults to 10000)
+
+### Rollback Plan
+
+If you experience issues with the optimized environment variable system:
+
+1. Replace `lib/env.ts` with the backup version:
+   ```bash
+   # Assuming you have a backup in lib/env.backup.ts
+   cp lib/env.backup.ts lib/env.ts
+   ```
+
+2. Revert the inlined environment variables in `next.config.js` by removing the `env` section.
+
+3. Revert any components using dynamic imports (like NotaryListWrapper) to use direct imports.
+
+4. Rebuild and restart the application:
+   ```bash
+   npm run build && npm start
+   ```
+
 ## Local Development
 
 ```bash
@@ -57,3 +95,12 @@ npm start
 
 # Run linting
 npm run lint
+```
+
+## Performance Testing
+
+To test the performance of environment variable access:
+
+1. Run the development server: `npm run dev`
+2. Navigate to `/test-env-optimization`
+3. View the performance metrics and bundle size impact
