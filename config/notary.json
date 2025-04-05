@@ -10,8 +10,13 @@
     "name": "blue-notary",
     "colors": {
       "primary": "#1e40af",
-      "secondary": "#1e3a8a",
-      "accent": "#f97316"
+      "secondary": "#0f1e59",
+      "accent": "#e25a00"
+    },
+    "accessibleTextColors": {
+      "primary": "#ffffff",
+      "secondary": "#ffffff",
+      "accent": "#000000"
     }
   },
   "hero": {
