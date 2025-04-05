@@ -5,6 +5,27 @@ module.exports = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  safelist: [
+    // Safelist all background colors used in directory cards
+    'bg-blue-400',
+    'bg-blue-500',
+    'bg-blue-600',
+    'bg-blue-700',
+    'bg-emerald-500',
+    'bg-emerald-700',
+    'bg-green-500',
+    'bg-green-600',
+    'bg-green-700',
+    'bg-orange-500',
+    'bg-purple-500',
+    'bg-purple-600',
+    'bg-purple-800',
+    'bg-red-400',
+    'bg-red-500',
+    'bg-red-700',
+    'bg-teal-600',
+    'bg-yellow-500'
+  ],
   darkMode: 'class',
   theme: {
     extend: {
