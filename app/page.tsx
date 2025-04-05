@@ -40,7 +40,12 @@ export default function HomePage() {
       <HeroSection />
 
       {/* Directory Grid - Using our new component */}
-      <DirectoriesGrid />
+      <section className="py-10">
+        <div className="max-w-5xl mx-auto px-4">
+          <h2 className="text-2xl font-semibold mb-6 text-white">Our Directories</h2>
+          <DirectoriesGrid />
+        </div>
+      </section>
 
       {/* Footer - Using our new component */}
       <FooterPlatform />
