@@ -14,8 +14,8 @@ export default function PlatformHomePage() {
       
       <main className="flex-grow">
         <HeroSection />
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="border-b border-gray-800 w-full"></div>
+        <div className="max-w-5xl mx-auto px-6 my-8">
+          <div className="border-b border-gray-700 w-full"></div>
         </div>
         <DirectoriesGrid />
       </main>

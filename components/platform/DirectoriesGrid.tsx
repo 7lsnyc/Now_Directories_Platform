@@ -7,7 +7,7 @@ import DirectoryCard from './DirectoryCard';
  */
 export default function DirectoriesGrid() {
   return (
-    <section className="py-12 px-6">
+    <section className="pt-4 pb-12 px-6">
       <div className="max-w-5xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {platformDirectories.map((directory, index) => (
