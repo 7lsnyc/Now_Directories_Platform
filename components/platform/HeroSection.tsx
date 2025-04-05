@@ -6,7 +6,7 @@ import Link from 'next/link';
  */
 export default function HeroSection() {
   return (
-    <section className="w-full bg-gray-900">
+    <section className="w-full bg-black">
       <div className="max-w-5xl mx-auto py-12 md:py-16 px-4 sm:px-6 text-center">
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 sm:mb-6">
           Curated Directories for Life's Emergencies
