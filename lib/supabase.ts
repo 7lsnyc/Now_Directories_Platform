@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { validateEnvironment } from './validateEnv';
+import env from './env';
 
 // Define the Database type to match the project's structure
 export type Database = {
@@ -261,31 +261,25 @@ export type Database = {
   };
 };
 
-// Validate environment variables before creating the client
-// This helps catch configuration issues early, especially in CI/CD environments
-const envValidation = validateEnvironment();
+// Check if all critical environment variables are properly configured
+const envValidation = env.checkCriticalVars();
 if (!envValidation.isValid) {
   // Log detailed error messages to help with debugging
   console.error('❌ Environment validation failed:');
   envValidation.errors.forEach(error => console.error(`  - ${error}`));
   
-  if (process.env.NODE_ENV === 'development') {
+  if (env.NODE_ENV === 'development') {
     // In development, show more helpful messages
     console.warn('⚠️ Using fallback values for development only. Fix environment variables before deploying.');
   }
 }
 
-// Use default values for CI/CD environments
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-for-build.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key-for-build-process';
-
 // Create a single supabase client for interacting with your database
 const supabase = createClient<Database>(
-  supabaseUrl,
-  supabaseAnonKey,
+  env.NEXT_PUBLIC_SUPABASE_URL,
+  env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   {
     auth: {
-      // Add better error handling for auth-related URL issues
       persistSession: true,
       detectSessionInUrl: true
     }

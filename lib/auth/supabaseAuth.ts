@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { domainMap } from '@/middleware';
+import env from '@/lib/env';
 
 /**
  * Gets the Supabase client for server components
@@ -15,13 +16,13 @@ export const getSupabaseServerClient = async () => {
   const host = cookieStore.get('x-host')?.value || '';
   
   // Determine directory slug from host
-  const directorySlug = domainMap[host] || 'platform';
+  const directorySlug = domainMap[host] || env.DEFAULT_DIRECTORY_SLUG;
   
   // Create Supabase client with custom fetch handler that adds JWT claims
   // This approach adds the directory_slug to the token used for all Supabase requests
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    env.NEXT_PUBLIC_SUPABASE_URL,
+    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       auth: {
         persistSession: false,

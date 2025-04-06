@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../lib/supabase';
+import env from '@/lib/env';
 
 type Notary = Database['public']['Tables']['notaries']['Row'];
 
@@ -16,16 +17,11 @@ export default function NotaryList() {
       try {
         setLoading(true);
         
-        // Create supabase client inside the effect to avoid Webpack module issues
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
-        
-        // Only create client if we have proper environment variables
-        if (!supabaseUrl || !supabaseAnonKey) {
-          throw new Error('Missing Supabase environment variables');
-        }
-        
-        const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
+        // Create supabase client using our environment utility
+        const supabase = createClient<Database>(
+          env.NEXT_PUBLIC_SUPABASE_URL,
+          env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        );
         
         const { data, error } = await supabase
           .from('notaries')

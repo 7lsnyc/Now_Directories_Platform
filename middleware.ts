@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import env from '@/lib/env';
 
 // Domain to directory slug mapping
 // This allows us to serve different directory content based on the domain
@@ -21,8 +22,8 @@ export function middleware(request: NextRequest) {
   // Get the hostname from the request
   const host = request.headers.get('host') || '';
   
-  // Find the matching directory slug or use 'platform' as default
-  const directorySlug = domainMap[host] || 'platform';
+  // Find the matching directory slug or use default from environment
+  const directorySlug = domainMap[host] || env.DEFAULT_DIRECTORY_SLUG;
   
   // Clone the request headers to modify them
   const requestHeaders = new Headers(request.headers);
@@ -43,7 +44,7 @@ export function middleware(request: NextRequest) {
     path: '/',
     httpOnly: true,
     sameSite: 'strict',
-    secure: process.env.NODE_ENV === 'production',
+    secure: env.NODE_ENV === 'production',
     // Short expiry as this is just for the current session
     maxAge: 60 * 60 * 24, // 1 day
   });
