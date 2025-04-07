@@ -14,9 +14,17 @@ const nextConfig = {
     ];
     return config;
   },
+  // Exclude development-only API routes in production builds
+  experimental: {
+    outputFileTracingExcludes: {
+      '*': [
+        './app/api/dev/**/*'
+      ]
+    }
+  },
   // Inline non-sensitive environment variables for faster access and smaller bundles
   env: {
-    DEFAULT_DIRECTORY_SLUG: process.env.DEFAULT_DIRECTORY_SLUG || 'notary',
+    DEFAULT_DIRECTORY_SLUG: process.env.DEFAULT_DIRECTORY_SLUG || 'notaryfindernow',
     ENABLE_ANALYTICS: process.env.ENABLE_ANALYTICS === 'true' ? 'true' : 'false',
     DEBUG_MODE: process.env.DEBUG_MODE === 'true' ? 'true' : 'false',
     API_TIMEOUT_MS: process.env.API_TIMEOUT_MS || '10000',

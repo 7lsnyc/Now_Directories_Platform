@@ -5,16 +5,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { isBuildTime, buildSafeEnvironment } from './build-safe';
 
-// Immediate build detection - resolves at import time
-const isBuildTime = typeof process !== 'undefined' && 
-  process.env.VERCEL_ENV === 'production' && 
-  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'undefined';
-
-// For production and build time, export a simplified version that always returns success
-// This prevents build errors while still making the route available in development
+/**
+ * GET handler for environment variable diagnostics
+ * Uses a build-safe approach that won't fail during build-time
+ */
 export async function GET(request: NextRequest) {
-  // During build or in production, immediately return success to prevent errors
+  // For builds and production environments, use a simplified response
+  // that doesn't depend on actual environment variables
   if (isBuildTime || process.env.NODE_ENV === 'production') {
     return NextResponse.json({
       status: 'ok',
@@ -25,7 +24,8 @@ export async function GET(request: NextRequest) {
 
   // Below here only runs in development
   try {
-    // Development-only code
+    // Dynamically import the environment service to prevent it from being
+    // evaluated at build time by Next.js
     const { environmentService } = await import('@/lib/services/EnvironmentService');
 
     const apiKey = request.headers.get('x-api-key');
