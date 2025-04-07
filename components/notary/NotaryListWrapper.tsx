@@ -4,12 +4,20 @@ import { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useDirectory } from '@/contexts/directory/DirectoryContext';
 
-// Dynamically import the NotaryList component to reduce initial bundle size
+/**
+ * Dynamically import the NotaryList component to reduce initial bundle size
+ * This improves performance by only loading the component when needed
+ */
 const NotaryList = dynamic(() => import('./NotaryList'), {
   loading: () => <NotaryListPlaceholder />
 });
 
-// Placeholder component to show while NotaryList is loading
+/**
+ * Loading placeholder shown while the main NotaryList component is being loaded
+ * Provides a skeleton UI with animation to indicate loading state
+ * Matches the general structure of the actual NotaryList for smoother transitions
+ * @returns {JSX.Element} Animated placeholder component
+ */
 const NotaryListPlaceholder = () => (
   <div className="p-4 border border-gray-200 rounded-md">
     <div className="animate-pulse space-y-4">
@@ -43,16 +51,28 @@ const NotaryListPlaceholder = () => (
   </div>
 );
 
+/**
+ * Props for the NotaryListWrapper component
+ */
 interface NotaryListWrapperProps {
+  /** The directory slug - used to ensure directory context matches the current route */
   slug: string; 
 }
 
 /**
- * NotaryListWrapper
- * Provides dynamic loading for the NotaryList component with geolocation features
- * Improves performance by only loading the component when needed
+ * Wrapper component for the NotaryList that handles:
+ * 1. Dynamic loading of the heavyweight NotaryList component
+ * 2. Client-side only rendering to prevent hydration errors
+ * 3. Directory context integration and validation
+ * 4. Placeholder rendering during loading
  * 
- * Uses DirectoryContext to access directory-specific data
+ * This component is used in the directory/[slug]/page.tsx to display
+ * notary listings for the specific directory. It works alongside the
+ * DirectoryContext to ensure proper tenant-specific data is provided.
+ * 
+ * @param {NotaryListWrapperProps} props - Component props
+ * @param {string} props.slug - The directory slug from the URL
+ * @returns {JSX.Element} The wrapped NotaryList component with proper loading states
  */
 export default function NotaryListWrapper({ slug }: NotaryListWrapperProps) {
   // State to ensure client-side rendering only
