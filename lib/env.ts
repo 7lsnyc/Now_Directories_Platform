@@ -36,15 +36,25 @@ export interface EnvironmentVariables {
 
 // Environment detection (computed once at import time)
 const ENV = {
-  isProd: process.env.NODE_ENV === 'production',
-  isDev: process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test',
+  isProd: typeof process !== 'undefined' && process.env.NODE_ENV === 'production',
+  isDev: typeof process !== 'undefined' && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'),
 };
 
-// Detect if we're in the Vercel build phase (no access to most env vars)
-const isVercelBuild = process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_SUPABASE_URL === undefined;
+// CRITICAL: More robust build detection that will be properly evaluated during Next.js static analysis
+// This uses multiple signals to detect a build environment
+const isVercelBuild = typeof process !== 'undefined' && (
+  // Primary signal: We're on Vercel production and missing expected variables
+  (process.env.VERCEL_ENV === 'production' && typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'undefined') ||
+  // Backup signal: We're in a Next.js build command
+  (process.env.npm_lifecycle_event === 'build') ||
+  // Fallback: NEXT_PHASE is defined by Next.js during certain build operations
+  (typeof process.env.NEXT_PHASE !== 'undefined' && 
+   ['phase-production-build', 'phase-export'].includes(process.env.NEXT_PHASE || ''))
+);
 
 // Validators (only used during initialization)
 const isValidUrl = (url: string): boolean => {
+  if (isVercelBuild) return true; // Skip validation during build
   try {
     new URL(url);
     return true;
@@ -56,7 +66,8 @@ const isValidUrl = (url: string): boolean => {
 // Validate and prepare critical environment variables
 // This runs once at import time rather than on each access
 const getCriticalVar = (key: string, validator?: (val: string) => boolean): string => {
-  // Skip validation during Vercel build phase
+  // CRITICAL: This check MUST be the very first thing we do
+  // It prevents any validation code from running during build
   if (isVercelBuild) {
     return `build-placeholder-${key.toLowerCase()}`;
   }
@@ -84,6 +95,7 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
 
 // Pre-compute non-critical values with defaults
 const getNonCriticalVar = <T>(key: string, defaultValue: T, transformer?: (val: string) => T): T => {
+  if (isVercelBuild) return defaultValue; // Skip during build
   const value = process.env[key];
   if (value === undefined) return defaultValue;
   return transformer ? transformer(value) : value as unknown as T;
@@ -96,90 +108,115 @@ const toNumber = (value: string): number => {
   return isNaN(num) ? 0 : num;
 };
 
-// Singleton export with pre-computed values
-// This reduces runtime overhead as values are calculated only once at import time
-export const env = {
-  // Critical variables (with validation)
-  NEXT_PUBLIC_SUPABASE_URL: getCriticalVar('NEXT_PUBLIC_SUPABASE_URL', isValidUrl),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: getCriticalVar('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-  SUPABASE_SERVICE_ROLE_KEY: getCriticalVar('SUPABASE_SERVICE_ROLE_KEY'),
-  
-  // Application config with defaults
-  NODE_ENV: getNonCriticalVar<'development' | 'production' | 'test'>('NODE_ENV', 'development'),
-  DEFAULT_DIRECTORY_SLUG: getNonCriticalVar('DEFAULT_DIRECTORY_SLUG', 'notaryfindernow'),
-  
-  // Optional configs
-  ENABLE_ANALYTICS: getNonCriticalVar('ENABLE_ANALYTICS', ENV.isProd, toBoolean),
-  DEBUG_MODE: getNonCriticalVar('DEBUG_MODE', ENV.isDev, toBoolean),
-  API_TIMEOUT_MS: getNonCriticalVar('API_TIMEOUT_MS', 10000, toNumber),
-  
-  // External API keys (optional)
-  GOOGLE_MAPS_API_KEY: getNonCriticalVar<string | undefined>('GOOGLE_MAPS_API_KEY', undefined),
-  STRIPE_PUBLIC_KEY: getNonCriticalVar<string | undefined>('STRIPE_PUBLIC_KEY', undefined),
-  STRIPE_SECRET_KEY: getNonCriticalVar<string | undefined>('STRIPE_SECRET_KEY', undefined),
-  
-  // Environment helpers
-  isProd: ENV.isProd,
-  isDev: ENV.isDev,
-  isVercelBuild,
-  
-  /**
-   * Helper method to check if all critical variables are set correctly
-   * Use this to determine if the application can function properly
-   */
-  checkCriticalVars(): { isValid: boolean; errors: string[] } {
-    // Skip validation during Vercel build phase
-    if (isVercelBuild) {
-      return { isValid: true, errors: [] };
+// Create a build-safe version of our environment
+// The entire module export is organized to ensure it won't throw during builds
+export const env = isVercelBuild 
+  ? {
+      // Build-time placeholders that won't throw errors
+      NEXT_PUBLIC_SUPABASE_URL: 'https://placeholder-for-build.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-for-build-key',
+      SUPABASE_SERVICE_ROLE_KEY: 'placeholder-for-build-service-key',
+      
+      // Safe defaults for application config
+      NODE_ENV: 'production' as const,
+      DEFAULT_DIRECTORY_SLUG: 'notaryfindernow',
+      
+      // Safe defaults for optional configs
+      ENABLE_ANALYTICS: false,
+      DEBUG_MODE: false,
+      API_TIMEOUT_MS: 10000,
+      
+      // Safe defaults for external APIs
+      GOOGLE_MAPS_API_KEY: undefined,
+      STRIPE_PUBLIC_KEY: undefined,
+      STRIPE_SECRET_KEY: undefined,
+      
+      // Environment helpers
+      isProd: true,
+      isDev: false,
+      isVercelBuild: true,
+      
+      // Stub methods that won't throw during build
+      checkCriticalVars: () => ({ isValid: true, errors: [] }),
+      getAllVars: () => ({})
     }
-
-    const errors: string[] = [];
-    
-    // Check Supabase URL
-    if (!this.NEXT_PUBLIC_SUPABASE_URL || !isValidUrl(this.NEXT_PUBLIC_SUPABASE_URL)) {
-      errors.push('Invalid or missing NEXT_PUBLIC_SUPABASE_URL');
-    }
-    
-    // Check Supabase anon key
-    if (!this.NEXT_PUBLIC_SUPABASE_ANON_KEY || this.NEXT_PUBLIC_SUPABASE_ANON_KEY.length < 10) {
-      errors.push('Invalid or missing NEXT_PUBLIC_SUPABASE_ANON_KEY');
-    }
-    
-    // Check Supabase service role key
-    if (!this.SUPABASE_SERVICE_ROLE_KEY || this.SUPABASE_SERVICE_ROLE_KEY.length < 10) {
-      errors.push('Invalid or missing SUPABASE_SERVICE_ROLE_KEY');
-    }
-    
-    return {
-      isValid: errors.length === 0,
-      errors
+  : {
+      // Critical variables (with validation)
+      NEXT_PUBLIC_SUPABASE_URL: getCriticalVar('NEXT_PUBLIC_SUPABASE_URL', isValidUrl),
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: getCriticalVar('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
+      SUPABASE_SERVICE_ROLE_KEY: getCriticalVar('SUPABASE_SERVICE_ROLE_KEY'),
+      
+      // Application config with defaults
+      NODE_ENV: getNonCriticalVar<'development' | 'production' | 'test'>('NODE_ENV', 'development'),
+      DEFAULT_DIRECTORY_SLUG: getNonCriticalVar('DEFAULT_DIRECTORY_SLUG', 'notaryfindernow'),
+      
+      // Optional configs
+      ENABLE_ANALYTICS: getNonCriticalVar('ENABLE_ANALYTICS', ENV.isProd, toBoolean),
+      DEBUG_MODE: getNonCriticalVar('DEBUG_MODE', ENV.isDev, toBoolean),
+      API_TIMEOUT_MS: getNonCriticalVar('API_TIMEOUT_MS', 10000, toNumber),
+      
+      // External API keys (optional)
+      GOOGLE_MAPS_API_KEY: getNonCriticalVar<string | undefined>('GOOGLE_MAPS_API_KEY', undefined),
+      STRIPE_PUBLIC_KEY: getNonCriticalVar<string | undefined>('STRIPE_PUBLIC_KEY', undefined),
+      STRIPE_SECRET_KEY: getNonCriticalVar<string | undefined>('STRIPE_SECRET_KEY', undefined),
+      
+      // Environment helpers
+      isProd: ENV.isProd,
+      isDev: ENV.isDev,
+      isVercelBuild,
+      
+      /**
+       * Helper method to check if all critical variables are set correctly
+       * Use this to determine if the application can function properly
+       */
+      checkCriticalVars(): { isValid: boolean; errors: string[] } {
+        const errors: string[] = [];
+        
+        // Check Supabase URL
+        if (!this.NEXT_PUBLIC_SUPABASE_URL || !isValidUrl(this.NEXT_PUBLIC_SUPABASE_URL)) {
+          errors.push('Invalid or missing NEXT_PUBLIC_SUPABASE_URL');
+        }
+        
+        // Check Supabase anon key
+        if (!this.NEXT_PUBLIC_SUPABASE_ANON_KEY || this.NEXT_PUBLIC_SUPABASE_ANON_KEY.length < 10) {
+          errors.push('Invalid or missing NEXT_PUBLIC_SUPABASE_ANON_KEY');
+        }
+        
+        // Check Supabase service role key
+        if (!this.SUPABASE_SERVICE_ROLE_KEY || this.SUPABASE_SERVICE_ROLE_KEY.length < 10) {
+          errors.push('Invalid or missing SUPABASE_SERVICE_ROLE_KEY');
+        }
+        
+        return {
+          isValid: errors.length === 0,
+          errors
+        };
+      },
+      
+      /**
+       * Get all environment variables for debugging (development only)
+       * This is helpful for troubleshooting environment issues
+       */
+      getAllVars(): Partial<EnvironmentVariables> {
+        if (!ENV.isDev) {
+          console.warn('getAllVars() should only be used in development mode');
+          return {};
+        }
+        
+        return {
+          NEXT_PUBLIC_SUPABASE_URL: this.NEXT_PUBLIC_SUPABASE_URL,
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: this.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***' : undefined,
+          SUPABASE_SERVICE_ROLE_KEY: this.SUPABASE_SERVICE_ROLE_KEY ? '***' : undefined,
+          NODE_ENV: this.NODE_ENV,
+          DEFAULT_DIRECTORY_SLUG: this.DEFAULT_DIRECTORY_SLUG,
+          ENABLE_ANALYTICS: this.ENABLE_ANALYTICS,
+          DEBUG_MODE: this.DEBUG_MODE,
+          API_TIMEOUT_MS: this.API_TIMEOUT_MS,
+          GOOGLE_MAPS_API_KEY: this.GOOGLE_MAPS_API_KEY ? '***' : undefined,
+          STRIPE_PUBLIC_KEY: this.STRIPE_PUBLIC_KEY ? '***' : undefined,
+          STRIPE_SECRET_KEY: this.STRIPE_SECRET_KEY ? '***' : undefined,
+        };
+      }
     };
-  },
-  
-  /**
-   * Get all environment variables for debugging (development only)
-   * This is helpful for troubleshooting environment issues
-   */
-  getAllVars(): Partial<EnvironmentVariables> {
-    if (!ENV.isDev) {
-      console.warn('getAllVars() should only be used in development mode');
-      return {};
-    }
-    
-    return {
-      NEXT_PUBLIC_SUPABASE_URL: this.NEXT_PUBLIC_SUPABASE_URL,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: this.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***' : undefined,
-      SUPABASE_SERVICE_ROLE_KEY: this.SUPABASE_SERVICE_ROLE_KEY ? '***' : undefined,
-      NODE_ENV: this.NODE_ENV,
-      DEFAULT_DIRECTORY_SLUG: this.DEFAULT_DIRECTORY_SLUG,
-      ENABLE_ANALYTICS: this.ENABLE_ANALYTICS,
-      DEBUG_MODE: this.DEBUG_MODE,
-      API_TIMEOUT_MS: this.API_TIMEOUT_MS,
-      GOOGLE_MAPS_API_KEY: this.GOOGLE_MAPS_API_KEY ? '***' : undefined,
-      STRIPE_PUBLIC_KEY: this.STRIPE_PUBLIC_KEY ? '***' : undefined,
-      STRIPE_SECRET_KEY: this.STRIPE_SECRET_KEY ? '***' : undefined,
-    };
-  }
-};
 
 export default env;
