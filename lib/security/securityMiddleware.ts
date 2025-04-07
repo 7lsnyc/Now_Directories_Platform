@@ -11,7 +11,7 @@ export function addSecurityHeaders(response: NextResponse): NextResponse {
   // Content Security Policy to prevent XSS
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' *.supabase.co"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' *.supabase.co *.openstreetmap.org ipapi.co"
   );
   
   // HSTS to enforce HTTPS
@@ -32,7 +32,7 @@ export function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   
   // Permissions policy
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
   
   return response;
 }

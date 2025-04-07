@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware';
 import { addSecurityHeaders, applyCorsPolicies, validateInput } from '@/lib/security/securityMiddleware';
+import { environmentService } from '@/lib/services/EnvironmentService';
 
 /**
  * Directory information retrieved from Supabase
@@ -22,6 +23,12 @@ interface DirectoryInfo {
  */
 const DIRECTORY_CACHE = new Map<string, CacheEntry>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+
+/**
+ * Domain mapping object that can be imported by other modules
+ * Maps custom domains to directory slugs
+ */
+export const domainMap = new Map<string, string>();
 
 /**
  * Structure for cached directory entries
@@ -53,6 +60,8 @@ interface CacheEntry {
 export async function middleware(request: NextRequest) {
   const { pathname, hostname } = new URL(request.url);
   
+  console.log(`[Middleware] Processing request: ${hostname}${pathname}`);
+  
   // Skip static files and API routes
   if (
     pathname.startsWith('/_next') || 
@@ -63,6 +72,15 @@ export async function middleware(request: NextRequest) {
   }
   
   try {
+    // Initialize environment service
+    try {
+      environmentService.initialize();
+    } catch (envError) {
+      console.error('[Middleware] Environment initialization failed:', 
+        envError instanceof Error ? envError.message : 'Unknown error');
+      return NextResponse.rewrite(new URL('/error', request.url));
+    }
+    
     // Create initial response to add security headers regardless of outcome
     let response = NextResponse.next();
     response = addSecurityHeaders(response);
@@ -75,41 +93,115 @@ export async function middleware(request: NextRequest) {
       const pathParts = pathname.split('/').filter(Boolean);
       const potentialSlug = pathParts[0];
       
+      console.log(`[Middleware] Local development path: ${pathname}, potential slug: ${potentialSlug}`);
+      
       if (potentialSlug) {
-        // Validate the slug
-        const validatedSlug = validateInput(potentialSlug, 'slug');
-        
-        if (validatedSlug) {
-          // Look up the directory in Supabase to verify it exists
-          const supabase = createClient(request);
+        // Check if the URL is already using the /directory/{slug} pattern
+        if (potentialSlug === 'directory' && pathParts.length > 1) {
+          // If the path is /directory/{slug}/..., use the second path part as the slug
+          const directorySlug = pathParts[1];
+          console.log(`[Middleware] Detected directory path format, using slug: ${directorySlug}`);
           
-          try {
-            const { data, error } = await supabase
-              .from('directories')
-              .select('directory_slug, domain, brand_color_primary')
-              .eq('directory_slug', validatedSlug)
-              .eq('is_active', true)
-              .maybeSingle();
+          // Validate the slug
+          const validatedSlug = validateInput(directorySlug, 'slug');
+          
+          if (validatedSlug) {
+            // Look up the directory in Supabase to verify it exists
+            const supabase = createClient(request);
             
-            if (!error && data) {
-              // Directory exists in database - rewrite to the correct path
-              const newPath = pathname.replace(`/${potentialSlug}`, '') || '/';
-              const targetUrl = new URL(`/directory/${validatedSlug}${newPath}`, request.url);
+            try {
+              console.log(`[Middleware] Looking up directory slug in Supabase: ${validatedSlug}`);
               
-              const dirResponse = NextResponse.rewrite(targetUrl);
-              response = addSecurityHeaders(dirResponse);
-              response = applyCorsPolicies(request, dirResponse);
+              const { data, error } = await supabase
+                .from('directories')
+                .select('directory_slug, domain, brand_color_primary')
+                .eq('directory_slug', validatedSlug)
+                .eq('is_active', true)
+                .maybeSingle();
               
-              // Set directory headers
-              response.headers.set('x-directory-slug', validatedSlug);
-              response.headers.set('x-directory-domain', data.domain);
-              response.headers.set('x-directory-color', data.brand_color_primary);
+              if (error) {
+                console.error(`[Middleware] Supabase error for slug ${validatedSlug}:`, error.message);
+              } else if (!data) {
+                console.warn(`[Middleware] No directory found in database for slug: ${validatedSlug}`);
+              }
               
-              return response;
+              if (!error && data) {
+                // Directory exists in database - rewrite to the correct path
+                const newPath = pathname.replace(`/${potentialSlug}/${directorySlug}`, '') || '/';
+                const targetUrl = new URL(`/directory/${validatedSlug}${newPath}`, request.url);
+                
+                console.log(`[Middleware] Rewriting to: ${targetUrl.pathname}`);
+                
+                const dirResponse = NextResponse.rewrite(targetUrl);
+                response = addSecurityHeaders(dirResponse);
+                response = applyCorsPolicies(request, dirResponse);
+                
+                // Set directory headers
+                response.headers.set('x-directory-slug', validatedSlug);
+                if (data.domain) {
+                  response.headers.set('x-directory-domain', data.domain);
+                }
+                if (data.brand_color_primary) {
+                  response.headers.set('x-directory-color', data.brand_color_primary);
+                }
+                
+                return response;
+              }
+            } catch (dbError) {
+              console.error(`[Middleware] Database error for slug ${validatedSlug}:`, 
+                dbError instanceof Error ? dbError.message : 'Unknown error');
             }
-          } catch (dbError) {
-            console.error('Database query error:', dbError instanceof Error ? dbError.message : 'Unknown error');
-            // Continue with normal routing if database lookup fails
+          }
+        } else {
+          // Validate the slug
+          const validatedSlug = validateInput(potentialSlug, 'slug');
+          
+          if (validatedSlug) {
+            // Look up the directory in Supabase to verify it exists
+            const supabase = createClient(request);
+            
+            try {
+              console.log(`[Middleware] Looking up directory slug in Supabase: ${validatedSlug}`);
+              
+              const { data, error } = await supabase
+                .from('directories')
+                .select('directory_slug, domain, brand_color_primary')
+                .eq('directory_slug', validatedSlug)
+                .eq('is_active', true)
+                .maybeSingle();
+              
+              if (error) {
+                console.error(`[Middleware] Supabase error for slug ${validatedSlug}:`, error.message);
+              } else if (!data) {
+                console.warn(`[Middleware] No directory found in database for slug: ${validatedSlug}`);
+              }
+              
+              if (!error && data) {
+                // Directory exists in database - rewrite to the correct path
+                const newPath = pathname.replace(`/${potentialSlug}`, '') || '/';
+                const targetUrl = new URL(`/directory/${validatedSlug}${newPath}`, request.url);
+                
+                console.log(`[Middleware] Rewriting to: ${targetUrl.pathname}`);
+                
+                const dirResponse = NextResponse.rewrite(targetUrl);
+                response = addSecurityHeaders(dirResponse);
+                response = applyCorsPolicies(request, dirResponse);
+                
+                // Set directory headers
+                response.headers.set('x-directory-slug', validatedSlug);
+                if (data.domain) {
+                  response.headers.set('x-directory-domain', data.domain);
+                }
+                if (data.brand_color_primary) {
+                  response.headers.set('x-directory-color', data.brand_color_primary);
+                }
+                
+                return response;
+              }
+            } catch (dbError) {
+              console.error(`[Middleware] Database error for slug ${validatedSlug}:`, 
+                dbError instanceof Error ? dbError.message : 'Unknown error');
+            }
           }
         }
       }
@@ -120,13 +212,42 @@ export async function middleware(request: NextRequest) {
     
     // Default domain - serve the normal Next.js app
     if (hostname === 'nowdirectories.com' || hostname.endsWith('.vercel.app')) {
+      console.log(`[Middleware] Default platform domain: ${hostname}, serving normal app`);
       return response;
+    }
+    
+    // Special case for notaryfindernow.com - directly rewrite to the correct directory
+    if (hostname === 'notaryfindernow.com' || hostname === 'www.notaryfindernow.com') {
+      console.log(`[Middleware] Handling notaryfindernow.com domain`);
+      
+      // Validate before using
+      const specialSlug = 'notaryfindernow';
+      const validatedSpecialSlug = validateInput(specialSlug, 'slug');
+      
+      if (validatedSpecialSlug) {
+        // Direct rewrite to the notaryfindernow directory
+        const dirResponse = NextResponse.rewrite(
+          new URL(`/directory/${validatedSpecialSlug}${pathname}`, request.url)
+        );
+        
+        // Set directory headers
+        dirResponse.headers.set('x-directory-slug', validatedSpecialSlug);
+        dirResponse.headers.set('x-directory-domain', hostname);
+        
+        console.log(`[Middleware] Direct rewrite for notaryfindernow.com to: /directory/notaryfindernow${pathname}`);
+        
+        // Apply security headers
+        response = addSecurityHeaders(dirResponse);
+        response = applyCorsPolicies(request, response);
+        
+        return response;
+      }
     }
     
     // Validate hostname before processing
     const validatedHostname = validateInput(hostname, 'domain');
     if (!validatedHostname) {
-      console.warn('Invalid hostname detected:', hostname);
+      console.warn('[Middleware] Invalid hostname detected:', hostname);
       return NextResponse.rewrite(new URL('/directory-not-found', request.url));
     }
     
@@ -140,11 +261,14 @@ export async function middleware(request: NextRequest) {
     // Use cached value if it exists and hasn't expired
     if (cachedEntry && (now - cachedEntry.timestamp < CACHE_TTL)) {
       directoryInfo = cachedEntry.data;
+      console.log(`[Middleware] Using cached directory data for: ${validatedHostname}`);
     } else {
       // Cache miss - look up directory in Supabase
       const supabase = createClient(request);
       
       try {
+        console.log(`[Middleware] Fetching directory data for domain: ${validatedHostname}`);
+        
         const { data, error } = await supabase
           .from('directories')
           .select('directory_slug, domain, brand_color_primary')
@@ -154,11 +278,19 @@ export async function middleware(request: NextRequest) {
         
         if (error) {
           // Log sanitized error without exposing sensitive details
-          console.error('Error fetching directory data:', error.message);
+          console.error(`[Middleware] Error fetching directory data for ${validatedHostname}:`, error.message);
           return NextResponse.rewrite(new URL('/error', request.url));
         }
         
         directoryInfo = data as DirectoryInfo | null;
+        
+        if (!directoryInfo) {
+          console.warn(`[Middleware] No directory found for domain: ${validatedHostname}`);
+        } else {
+          console.log(`[Middleware] Found directory slug: ${directoryInfo.directory_slug} for domain: ${validatedHostname}`);
+          // Update domainMap to keep it in sync
+          domainMap.set(validatedHostname, directoryInfo.directory_slug);
+        }
         
         // Update cache
         DIRECTORY_CACHE.set(cacheKey, {
@@ -166,7 +298,7 @@ export async function middleware(request: NextRequest) {
           timestamp: now
         });
       } catch (dbError) {
-        console.error('Database query error:', dbError instanceof Error ? dbError.message : 'Unknown error');
+        console.error('[Middleware] Database query error:', dbError instanceof Error ? dbError.message : 'Unknown error');
         return NextResponse.rewrite(new URL('/error', request.url));
       }
     }
@@ -176,7 +308,7 @@ export async function middleware(request: NextRequest) {
       // Validate directory slug before using it
       const validatedSlug = validateInput(directoryInfo.directory_slug, 'slug');
       if (!validatedSlug) {
-        console.error('Invalid directory slug in database:', directoryInfo.directory_slug);
+        console.error('[Middleware] Invalid directory slug in database:', directoryInfo.directory_slug);
         return NextResponse.rewrite(new URL('/error', request.url));
       }
       
@@ -184,6 +316,8 @@ export async function middleware(request: NextRequest) {
       const dirResponse = NextResponse.rewrite(
         new URL(`/directory/${validatedSlug}${pathname}`, request.url)
       );
+      
+      console.log(`[Middleware] Rewriting ${hostname}${pathname} to: /directory/${validatedSlug}${pathname}`);
       
       // Apply security headers
       response = addSecurityHeaders(dirResponse);
@@ -197,7 +331,20 @@ export async function middleware(request: NextRequest) {
       return response;
     }
     
-    // Directory not found - show 404 page
+    // Directory not found - try to use the default directory slug from environment
+    const defaultSlug = environmentService.getValues().defaults.directorySlug;
+    if (defaultSlug) {
+      console.log(`[Middleware] Using default directory slug: ${defaultSlug}`);
+      const defaultResponse = NextResponse.rewrite(
+        new URL(`/directory/${defaultSlug}${pathname}`, request.url)
+      );
+      response = addSecurityHeaders(defaultResponse);
+      response.headers.set('x-directory-slug', defaultSlug);
+      return response;
+    }
+    
+    // No default directory - show 404 page
+    console.warn(`[Middleware] No directory mapping found for: ${hostname}, showing 404`);
     return NextResponse.rewrite(new URL('/directory-not-found', request.url));
   } catch (error) {
     // Sanitize error before logging - don't expose sensitive details
