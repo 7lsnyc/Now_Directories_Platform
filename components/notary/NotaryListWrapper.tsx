@@ -1,7 +1,8 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
+import { useDirectory } from '@/contexts/directory/DirectoryContext';
 
 // Dynamically import the NotaryList component to reduce initial bundle size
 const NotaryList = dynamic(() => import('./NotaryList'), {
@@ -43,18 +44,47 @@ const NotaryListPlaceholder = () => (
 );
 
 interface NotaryListWrapperProps {
-  slug?: string;
+  slug: string; 
 }
 
 /**
  * NotaryListWrapper
  * Provides dynamic loading for the NotaryList component with geolocation features
  * Improves performance by only loading the component when needed
+ * 
+ * Uses DirectoryContext to access directory-specific data
  */
 export default function NotaryListWrapper({ slug }: NotaryListWrapperProps) {
+  // State to ensure client-side rendering only
+  const [isClient, setIsClient] = useState(false);
+  
+  // Access directory data from context
+  const { directory, themeColors } = useDirectory();
+  
+  // Use effect to mark when component is mounted client-side
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  // Additional safety check - if the directory in context doesn't match the provided slug
+  // This may happen in rare cases when navigating between directories quickly
+  if (directory && directory.directory_slug !== slug) {
+    console.warn(`[NotaryListWrapper] Slug mismatch: ${slug} vs ${directory.directory_slug}`);
+  }
+  
+  // Use suspense to handle the loading state
+  // Only render the full component on the client side to avoid hydration errors
   return (
     <Suspense fallback={<NotaryListPlaceholder />}>
-      <NotaryList slug={slug} />
+      {isClient ? (
+        <NotaryList 
+          slug={slug} 
+          directoryData={directory} 
+          themeColors={themeColors}
+        />
+      ) : (
+        <NotaryListPlaceholder />
+      )}
     </Suspense>
   );
 }

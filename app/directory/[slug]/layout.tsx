@@ -7,6 +7,8 @@ import { loadConfig } from '@/lib/config/loadConfig';
 import ThemeProviderClient from '@/components/ThemeProviderClient';
 import supabase from '@/lib/supabase';
 import { DirectoryConfig } from '@/lib/config/loadConfig';
+import { Directory } from '@/types/directory';
+import { DirectoryProvider } from '@/contexts/directory/DirectoryContext';
 
 /**
  * Layout component for the directory/[slug] route
@@ -22,8 +24,8 @@ const DirectoryLayout = async ({
   children: React.ReactNode;
   params: { slug: string };
 }) => {
-  // Attempt to fetch directory config from Supabase
-  let directoryConfig: DirectoryConfig | null = null;
+  // Attempt to fetch directory data from Supabase
+  let directoryData: Directory | null = null;
   
   try {
     const { data, error } = await supabase
@@ -33,55 +35,11 @@ const DirectoryLayout = async ({
       .single();
       
     if (error) {
-      console.log(`Error fetching directory config from Supabase: ${error.message}`);
+      console.log(`Error fetching directory data from Supabase: ${error.message}`);
       // Will fallback to local JSON
     } else if (data) {
-      // Convert Supabase data to DirectoryConfig format
-      directoryConfig = {
-        name: data.name || params.slug,
-        title: data.title || 'Directory',
-        description: data.description || '',
-        theme: data.theme || {
-          name: 'default',
-          colors: {
-            primary: '#1e40af',
-            secondary: '#1e3a8a',
-            accent: '#f97316'
-          }
-        },
-        logo: data.logo || {
-          path: '/images/logo.png',
-          alt: 'Directory Logo'
-        },
-        navigation: data.navigation || {
-          header: {
-            ctaButton: {
-              text: 'Get Started',
-              url: '#'
-            }
-          },
-          footer: {
-            quickLinks: [],
-            services: [],
-            support: []
-          }
-        },
-        hero: data.hero || {
-          heading: 'Welcome to Directory',
-          subheading: 'Find what you need'
-        },
-        serviceTypes: data.serviceTypes || [],
-        seo: data.seo || {
-          title: data.title || 'Directory',
-          description: data.description || 'Directory description'
-        },
-        features: data.features || {
-          search: true,
-          filter: true,
-          sort: true,
-          pagination: true
-        }
-      };
+      directoryData = data as Directory;
+      console.log(`[DEBUG Layout] Loaded directory from Supabase: ${directoryData.name}`);
     }
   } catch (error) {
     console.error('Failed to fetch directory from Supabase:', error);
@@ -89,14 +47,16 @@ const DirectoryLayout = async ({
   }
   
   // If Supabase didn't return data, fallback to local JSON config
-  if (!directoryConfig) {
+  let directoryConfig: DirectoryConfig | null = null;
+  
+  if (!directoryData) {
     try {
       console.log(`[DEBUG Layout] No Supabase data found for ${params.slug}, using loadConfig`);
       // Use await since loadConfig is now async
       directoryConfig = await loadConfig(params.slug);
       console.log(`[DEBUG Layout] Config loaded via loadConfig:`, {
-        name: directoryConfig.name,
-        title: directoryConfig.title
+        name: directoryConfig?.name || 'unknown',
+        title: directoryConfig?.title || 'unknown'
       });
     } catch (error) {
       console.error(`[DEBUG Layout] Error in loadConfig for ${params.slug}:`, error);
@@ -105,126 +65,183 @@ const DirectoryLayout = async ({
     }
   }
 
-  // If config is default (not found in Supabase or local files), return 404
-  if (directoryConfig.name === 'default') {
+  // If using local config and config is default (not found), return 404
+  if (directoryConfig && directoryConfig.name === 'default') {
     console.log(`[DEBUG Layout] Directory not found for ${params.slug}, returning 404`);
     notFound();
     // Return null for testing environments
     return null;
   }
+  
+  // Use directoryData from Supabase as the source of truth if available
+  // If we have no directory data and no config, return 404
+  if (!directoryData && !directoryConfig) {
+    console.error(`[DEBUG Layout] No directory data or config found for ${params.slug}`);
+    notFound();
+    return null;
+  }
+  
+  // Create a fallback config to pass to ThemeProviderClient
+  const safeConfig: DirectoryConfig = directoryConfig || {
+    name: directoryData?.name || params.slug,
+    title: directoryData?.name || params.slug,
+    description: directoryData?.description || '',
+    theme: {
+      name: 'default',
+      colors: {
+        primary: directoryData?.brand_color_primary || '#1e40af',
+        secondary: directoryData?.brand_color_secondary || '#1e3a8a',
+        accent: directoryData?.brand_color_accent || '#f97316'
+      }
+    },
+    logo: {
+      path: directoryData?.logo_url || '/images/logo.png',
+      alt: directoryData?.name || 'Directory Logo'
+    },
+    navigation: {
+      header: {
+        ctaButton: {
+          text: 'Get Started',
+          url: '#'
+        }
+      },
+      footer: {
+        quickLinks: [],
+        services: [],
+        support: []
+      }
+    },
+    hero: {
+      heading: directoryData?.name || 'Welcome',
+      subheading: directoryData?.description || 'Find what you need'
+    },
+    serviceTypes: [],
+    seo: {
+      title: directoryData?.name || params.slug,
+      description: directoryData?.description || 'Directory description'
+    },
+    features: {
+      search: true,
+      filter: true,
+      sort: true,
+      pagination: true
+    }
+  };
 
   return (
-    <ThemeProviderClient config={directoryConfig}>
-      <div className="min-h-screen flex flex-col" data-testid="directory-layout">
-        <header className="bg-theme-primary text-white">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <Link href={`/directory/${params.slug}`} className="flex items-center space-x-2">
-              {directoryConfig.logo?.path && (
-                <Image 
-                  src={directoryConfig.logo.path} 
-                  alt={directoryConfig.logo.alt || directoryConfig.title} 
-                  width={40} 
-                  height={40}
-                  className="w-10 h-10"
-                />
-              )}
-              <span className="font-bold text-xl">{directoryConfig.title}</span>
-            </Link>
-            
-            <nav>
-              <ul className="flex space-x-6">
-                <li>
-                  <Link href={`/directory/${params.slug}`} className="hover:text-gray-200">
-                    Home
-                  </Link>
-                </li>
-                <li>
-                  <Link href={`/directory/${params.slug}/search`} className="hover:text-gray-200">
-                    Search
-                  </Link>
-                </li>
-                {directoryConfig.navigation?.header?.ctaButton && (
+    <DirectoryProvider initialDirectory={directoryData}>
+      <ThemeProviderClient config={safeConfig}>
+        <div className="min-h-screen flex flex-col" data-testid="directory-layout">
+          <header className="bg-theme-primary text-white">
+            <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+              <Link href={`/directory/${params.slug}`} className="flex items-center space-x-2">
+                {safeConfig.logo?.path && (
+                  <Image 
+                    src={safeConfig.logo.path} 
+                    alt={safeConfig.logo.alt || safeConfig.title} 
+                    width={40} 
+                    height={40}
+                    className="w-10 h-10"
+                  />
+                )}
+                <span className="font-bold text-xl">{directoryData?.name || safeConfig.title}</span>
+              </Link>
+              
+              <nav>
+                <ul className="flex space-x-6">
                   <li>
-                    <Link 
-                      href={directoryConfig.navigation.header.ctaButton.url} 
-                      className="btn-theme-primary"
-                    >
-                      {directoryConfig.navigation.header.ctaButton.text}
+                    <Link href={`/directory/${params.slug}`} className="hover:text-gray-200">
+                      Home
                     </Link>
                   </li>
+                  <li>
+                    <Link href={`/directory/${params.slug}/search`} className="hover:text-gray-200">
+                      Search
+                    </Link>
+                  </li>
+                  {safeConfig.navigation?.header?.ctaButton && (
+                    <li>
+                      <Link 
+                        href={safeConfig.navigation.header.ctaButton.url} 
+                        className="btn-theme-primary"
+                      >
+                        {safeConfig.navigation.header.ctaButton.text}
+                      </Link>
+                    </li>
+                  )}
+                </ul>
+              </nav>
+            </div>
+          </header>
+
+          <main className="flex-grow">
+            {children}
+          </main>
+
+          <footer className="bg-theme-secondary text-white py-8">
+            <div className="container mx-auto px-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                  <h3 className="text-xl font-bold mb-4">About</h3>
+                  <p>{directoryData?.description || safeConfig.description}</p>
+                </div>
+                
+                {safeConfig.navigation?.footer?.quickLinks && safeConfig.navigation.footer.quickLinks.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">Quick Links</h3>
+                    <ul className="space-y-2">
+                      {safeConfig.navigation.footer.quickLinks.map((link, index) => (
+                        <li key={`quick-link-${index}`}>
+                          <Link href={link.url} className="hover:underline">
+                            {link.text}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
-              </ul>
-            </nav>
-          </div>
-        </header>
-
-        <main className="flex-grow">
-          {children}
-        </main>
-
-        <footer className="bg-theme-secondary text-white py-8">
-          <div className="container mx-auto px-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 className="text-xl font-bold mb-4">About</h3>
-                <p>{directoryConfig.description}</p>
+                
+                {safeConfig.navigation?.footer?.services && safeConfig.navigation.footer.services.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">Services</h3>
+                    <ul className="space-y-2">
+                      {safeConfig.navigation.footer.services.map((link, index) => (
+                        <li key={`service-link-${index}`}>
+                          <Link href={link.url} className="hover:underline">
+                            {link.text}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {safeConfig.navigation?.footer?.support && safeConfig.navigation.footer.support.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-bold mb-4">Support</h3>
+                    <ul className="space-y-2">
+                      {safeConfig.navigation.footer.support.map((link, index) => (
+                        <li key={`support-link-${index}`}>
+                          <Link href={link.url} className="hover:underline">
+                            {link.text}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
               
-              {directoryConfig.navigation?.footer?.quickLinks?.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-bold mb-4">Quick Links</h3>
-                  <ul className="space-y-2">
-                    {directoryConfig.navigation.footer.quickLinks.map((link, index) => (
-                      <li key={`quick-link-${index}`}>
-                        <Link href={link.url} className="hover:underline">
-                          {link.text}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {directoryConfig.navigation?.footer?.services?.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-bold mb-4">Services</h3>
-                  <ul className="space-y-2">
-                    {directoryConfig.navigation.footer.services.map((link, index) => (
-                      <li key={`service-link-${index}`}>
-                        <Link href={link.url} className="hover:underline">
-                          {link.text}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              
-              {directoryConfig.navigation?.footer?.support?.length > 0 && (
-                <div>
-                  <h3 className="text-xl font-bold mb-4">Support</h3>
-                  <ul className="space-y-2">
-                    {directoryConfig.navigation.footer.support.map((link, index) => (
-                      <li key={`support-link-${index}`}>
-                        <Link href={link.url} className="hover:underline">
-                          {link.text}
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
+                <p>&copy; {new Date().getFullYear()} {directoryData?.name || safeConfig.title}. All rights reserved.</p>
+              </div>
             </div>
-            
-            <div className="mt-8 pt-8 border-t border-gray-700 text-center text-sm">
-              <p>&copy; {new Date().getFullYear()} {directoryConfig.title}. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
-      </div>
-    </ThemeProviderClient>
+          </footer>
+        </div>
+      </ThemeProviderClient>
+    </DirectoryProvider>
   );
 };
 
-// Use a TypeScript cast to bypass the type checking on Next.js layouts
-export default DirectoryLayout as unknown as React.ComponentType;
+// Export the component with proper typing for Next.js layout
+export default DirectoryLayout;

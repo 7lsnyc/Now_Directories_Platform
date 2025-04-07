@@ -5,13 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 import { Directory } from '@/types/directory';
 import dynamic from 'next/dynamic';
 import NotaryListWrapper from '@/components/notary/NotaryListWrapper';
-import DirectoryLayout from '@/components/directory/DirectoryLayout';
-import { DirectoryProvider } from '@/components/directory/DirectoryContext';
-
-// Dynamically import directory-specific components
-// const NotaryFinderNow = dynamic(() => import('./notaryfindernow'), {
-//   loading: () => <DirectoryPageSkeleton />
-// });
+import { useDirectory } from '@/contexts/directory/DirectoryContext';
 
 // Generic skeleton component for loading state
 function DirectoryPageSkeleton() {
@@ -160,17 +154,17 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
     directory_slug: directoryData?.directory_slug
   });
   
+  // The DirectoryProvider is now handled in the layout component
+  // We can directly return the appropriate content based on the slug
   return (
-    <DirectoryProvider initialDirectory={directoryData}>
-      <DirectoryLayout directory={directoryData}>
-        {/* Main directory content */}
-        {slug === 'notaryfindernow' ? (
-          <NotaryListWrapper slug={slug} />
-        ) : (
-          <GenericDirectoryContent directory={directoryData} />
-        )}
-      </DirectoryLayout>
-    </DirectoryProvider>
+    <>
+      {/* Main directory content */}
+      {slug === 'notaryfindernow' ? (
+        <NotaryListWrapper slug={slug} />
+      ) : (
+        <GenericDirectoryContent directory={directoryData} />
+      )}
+    </>
   );
 }
 

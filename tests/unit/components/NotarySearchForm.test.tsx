@@ -28,6 +28,7 @@ Object.defineProperty(global.navigator, 'geolocation', {
 describe('NotarySearchForm', () => {
   const mockOnSearch = jest.fn();
   const mockAvailableServices = ['Mobile Notary', 'Loan Signing', 'Apostille'];
+  const mockPrimaryColor = '#0047AB'; // Default test primary color
   
   beforeEach(() => {
     jest.clearAllMocks();
@@ -39,6 +40,7 @@ describe('NotarySearchForm', () => {
         onSearch={mockOnSearch} 
         availableServices={mockAvailableServices}
         isLoading={false}
+        primaryColor={mockPrimaryColor}
       />
     );
     
@@ -66,6 +68,7 @@ describe('NotarySearchForm', () => {
         onSearch={mockOnSearch} 
         availableServices={mockAvailableServices}
         isLoading={false}
+        primaryColor={mockPrimaryColor}
       />
     );
     
@@ -77,7 +80,7 @@ describe('NotarySearchForm', () => {
     await waitFor(() => {
       expect(mockOnSearch).toHaveBeenCalledWith(
         { latitude: 40.7128, longitude: -74.0060 },
-        { serviceType: '', minimumRating: false }
+        { serviceType: '', minimumRating: false, maxDistance: 20 }
       );
     });
     
@@ -99,6 +102,7 @@ describe('NotarySearchForm', () => {
         onSearch={mockOnSearch} 
         availableServices={mockAvailableServices}
         isLoading={false}
+        primaryColor={mockPrimaryColor}
       />
     );
     
@@ -128,6 +132,7 @@ describe('NotarySearchForm', () => {
         onSearch={mockOnSearch} 
         availableServices={mockAvailableServices}
         isLoading={false}
+        primaryColor={mockPrimaryColor}
       />
     );
     
@@ -144,7 +149,7 @@ describe('NotarySearchForm', () => {
       expect(geocodingUtils.geocodeAddress).toHaveBeenCalledWith('Los Angeles, CA');
       expect(mockOnSearch).toHaveBeenCalledWith(
         { latitude: 34.0522, longitude: -118.2437 },
-        { serviceType: '', minimumRating: false }
+        { serviceType: '', minimumRating: false, maxDistance: 20 }
       );
     });
   });
@@ -163,6 +168,7 @@ describe('NotarySearchForm', () => {
         onSearch={mockOnSearch} 
         availableServices={mockAvailableServices}
         isLoading={false}
+        primaryColor={mockPrimaryColor}
       />
     );
     
@@ -199,12 +205,17 @@ describe('NotarySearchForm', () => {
         onSearch={mockOnSearch} 
         availableServices={mockAvailableServices}
         isLoading={false}
+        primaryColor={mockPrimaryColor}
       />
     );
     
     // Select a service type
     const serviceTypeSelect = screen.getByLabelText('Service Type');
     fireEvent.change(serviceTypeSelect, { target: { value: 'Mobile Notary' } });
+    
+    // Select a max distance
+    const maxDistanceSelect = screen.getByLabelText('Maximum Distance (miles)');
+    fireEvent.change(maxDistanceSelect, { target: { value: '50' } });
     
     // Check the minimum rating checkbox
     const ratingCheckbox = screen.getByLabelText('Only 3.5+ Stars');
@@ -218,7 +229,7 @@ describe('NotarySearchForm', () => {
     await waitFor(() => {
       expect(mockOnSearch).toHaveBeenCalledWith(
         expect.any(Object),
-        { serviceType: 'Mobile Notary', minimumRating: true }
+        { serviceType: 'Mobile Notary', minimumRating: true, maxDistance: 50 }
       );
     });
   });
