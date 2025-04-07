@@ -1,47 +1,45 @@
-import { environmentService } from '@/lib/services/EnvironmentService';
-import { NextRequest, NextResponse } from 'next/server';
-
 /**
  * Diagnostic route to check environment configuration
  * Only available in development mode
  * Protected by API key for security
  */
-export async function GET(request: NextRequest) {
-  // Skip environment checks during build time or in production
-  const isBuildOrProd = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
-  const isVercelBuild = process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_SUPABASE_URL === undefined;
-  
-  if (isBuildOrProd && !isVercelBuild) {
-    return NextResponse.json(
-      { message: 'This route is not available in production' },
-      { status: 403 }
-    );
-  }
 
-  // During Vercel build, return a successful empty response to allow build to complete
-  if (isVercelBuild) {
-    return NextResponse.json({ 
+import { NextRequest, NextResponse } from 'next/server';
+
+// Immediate build detection - resolves at import time
+const isBuildTime = typeof process !== 'undefined' && 
+  process.env.VERCEL_ENV === 'production' && 
+  typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'undefined';
+
+// For production and build time, export a simplified version that always returns success
+// This prevents build errors while still making the route available in development
+export async function GET(request: NextRequest) {
+  // During build or in production, immediately return success to prevent errors
+  if (isBuildTime || process.env.NODE_ENV === 'production') {
+    return NextResponse.json({
       status: 'ok',
-      message: 'Build-time check - skipping actual environment validation',
-      buildTime: true
+      message: 'Environmental checks skipped in production/build',
+      buildTime: true,
     });
   }
 
-  // Safe fallback for build time when env vars might not be loaded
-  const apiKey = request.headers.get('x-api-key');
-  const diagnosticKey = process.env.DIAGNOSTIC_API_KEY || 'dev_diagnostic_key_123';
-  if (apiKey !== diagnosticKey) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-  
+  // Below here only runs in development
   try {
-    // Safely initialize environment service with fallbacks for build time
+    // Development-only code
+    const { environmentService } = await import('@/lib/services/EnvironmentService');
+
+    const apiKey = request.headers.get('x-api-key');
+    const diagnosticKey = process.env.DIAGNOSTIC_API_KEY || 'dev_diagnostic_key_123';
+    
+    if (apiKey !== diagnosticKey) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
     try {
       environmentService.initialize();
     } catch (initError) {
       console.warn('Environment service initialization failed:', initError);
       
-      // Return reduced diagnostics if initialization failed
       return NextResponse.json({
         status: 'error',
         initialized: false,
@@ -50,7 +48,6 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Only return non-sensitive information with safe fallbacks
     return NextResponse.json({
       status: 'ok',
       initialized: true,
