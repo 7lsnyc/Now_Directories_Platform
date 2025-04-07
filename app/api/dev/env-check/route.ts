@@ -7,12 +7,24 @@ import { NextRequest, NextResponse } from 'next/server';
  * Protected by API key for security
  */
 export async function GET(request: NextRequest) {
-  // Skip environment checks during build time
-  if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+  // Skip environment checks during build time or in production
+  const isBuildOrProd = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+  const isVercelBuild = process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_SUPABASE_URL === undefined;
+  
+  if (isBuildOrProd && !isVercelBuild) {
     return NextResponse.json(
       { message: 'This route is not available in production' },
       { status: 403 }
     );
+  }
+
+  // During Vercel build, return a successful empty response to allow build to complete
+  if (isVercelBuild) {
+    return NextResponse.json({ 
+      status: 'ok',
+      message: 'Build-time check - skipping actual environment validation',
+      buildTime: true
+    });
   }
 
   // Safe fallback for build time when env vars might not be loaded
@@ -28,6 +40,14 @@ export async function GET(request: NextRequest) {
       environmentService.initialize();
     } catch (initError) {
       console.warn('Environment service initialization failed:', initError);
+      
+      // Return reduced diagnostics if initialization failed
+      return NextResponse.json({
+        status: 'error',
+        initialized: false,
+        error: initError instanceof Error ? initError.message : 'Unknown initialization error',
+        nodeEnv: process.env.NODE_ENV || 'unknown',
+      });
     }
     
     // Only return non-sensitive information with safe fallbacks
