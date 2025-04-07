@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Directory, DirectoryThemeColors } from '@/types/directory';
-import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry/componentRegistry';
+import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry';
 import { Coordinates, SearchFilters } from '@/components/notary/NotarySearchForm';
 
 interface SearchComponentWrapperProps {

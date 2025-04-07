@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { Directory } from '@/types/directory';
-import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry/componentRegistry';
+import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry';
 import { getTextColorForBackground } from '@/utils/accessibility';
 import { FaMapMarkerAlt, FaSearch, FaMobileAlt, FaClock, FaStar, FaCheckCircle } from 'react-icons/fa';
 import SearchComponentWrapper from '@/components/directory/SearchComponentWrapper';
