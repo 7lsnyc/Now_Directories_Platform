@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware';
 import { addSecurityHeaders, applyCorsPolicies, validateInput } from '@/lib/security/securityMiddleware';
-import { LOCAL_DEV_DIRECTORY, LOCAL_PATH_TO_DIRECTORY_MAP } from '@/lib/localDevelopment';
 
 // Types
 interface DirectoryInfo {
@@ -42,51 +41,48 @@ export async function middleware(request: NextRequest) {
     response = addSecurityHeaders(response);
     response = applyCorsPolicies(request, response);
     
-    // Local development handling - allow testing directories without domain setup
+    // For development environments, use Supabase to lookup directories
+    // This ensures consistency between development and production
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      // Check if the pathname maps to a specific directory for testing
+      // Extract potential directory slug from the URL path
       const pathParts = pathname.split('/').filter(Boolean);
-      const directPathMatch = pathParts[0] && LOCAL_PATH_TO_DIRECTORY_MAP[`/${pathParts[0]}`];
+      const potentialSlug = pathParts[0];
       
-      if (directPathMatch) {
-        // Path-based directory mapping for development
-        const dirSlug = validateInput(directPathMatch, 'slug');
-        if (dirSlug) {
-          // Strip the directory part from the path when rewriting
-          const newPath = pathname.replace(`/${pathParts[0]}`, '');
-          const targetUrl = new URL(`/directory/${dirSlug}${newPath || '/'}`, request.url);
-          
-          const dirResponse = NextResponse.rewrite(targetUrl);
-          response = addSecurityHeaders(dirResponse);
-          response = applyCorsPolicies(request, dirResponse);
-          
-          // Set debug headers
-          response.headers.set('x-directory-slug', dirSlug);
-          response.headers.set('x-debug-mode', 'path-mapping');
-          
-          return response;
-        }
-      }
-      
-      // Default directory for localhost when no path match is found
-      if (LOCAL_DEV_DIRECTORY) {
-        const validatedSlug = validateInput(LOCAL_DEV_DIRECTORY, 'slug');
+      if (potentialSlug) {
+        // Validate the slug
+        const validatedSlug = validateInput(potentialSlug, 'slug');
+        
         if (validatedSlug) {
-          const dirResponse = NextResponse.rewrite(
-            new URL(`/directory/${validatedSlug}${pathname}`, request.url)
-          );
+          // Look up the directory in Supabase to verify it exists
+          const supabase = createClient(request);
           
-          response = addSecurityHeaders(dirResponse);
-          response = applyCorsPolicies(request, dirResponse);
+          const { data, error } = await supabase
+            .from('directories')
+            .select('directory_slug, domain, brand_color_primary')
+            .eq('directory_slug', validatedSlug)
+            .eq('is_active', true)
+            .maybeSingle();
           
-          // Set debug headers
-          response.headers.set('x-directory-slug', validatedSlug);
-          response.headers.set('x-debug-mode', 'localhost-default');
-          
-          return response;
+          if (!error && data) {
+            // Directory exists in database - rewrite to the correct path
+            const newPath = pathname.replace(`/${potentialSlug}`, '') || '/';
+            const targetUrl = new URL(`/directory/${validatedSlug}${newPath}`, request.url);
+            
+            const dirResponse = NextResponse.rewrite(targetUrl);
+            response = addSecurityHeaders(dirResponse);
+            response = applyCorsPolicies(request, dirResponse);
+            
+            // Set directory headers
+            response.headers.set('x-directory-slug', validatedSlug);
+            response.headers.set('x-directory-domain', data.domain);
+            response.headers.set('x-directory-color', data.brand_color_primary);
+            
+            return response;
+          }
         }
       }
       
+      // No valid directory in path - return normal response
       return response;
     }
     
