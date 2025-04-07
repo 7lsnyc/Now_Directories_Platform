@@ -1,7 +1,9 @@
 // Supabase Edge Function to set directory_slug in JWT claims
 // Deploy with: supabase functions deploy set-directory-claim
 
+// @deno-types="https://deno.land/std@0.168.0/http/server.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// @deno-types="https://esm.sh/@supabase/supabase-js@2"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 // Type for request payload
@@ -10,7 +12,24 @@ interface RequestPayload {
   directorySlug: string;
 }
 
-serve(async (req) => {
+// Define types for Deno environment
+declare global {
+  namespace Deno {
+    interface Env {
+      get(key: string): string | undefined;
+    }
+    const env: Env;
+  }
+}
+
+// Define request type
+interface RequestType {
+  method: string;
+  headers: Headers;
+  json: () => Promise<any>;
+}
+
+serve(async (req: RequestType) => {
   try {
     // Get request data
     const { token, directorySlug } = await req.json() as RequestPayload
@@ -74,9 +93,9 @@ serve(async (req) => {
         headers: { "Content-Type": "application/json" } 
       }
     )
-  } catch (error) {
+  } catch (error: unknown) {
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { "Content-Type": "application/json" } }
     )
   }

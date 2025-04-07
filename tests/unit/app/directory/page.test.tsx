@@ -1,146 +1,153 @@
 import { render, screen } from '@testing-library/react';
-import DirectoryPage from '@/app/directory/[slug]/page';
-import { useDirectoryWithFallback } from '@/lib/config/useDirectoryWithFallback';
-import { loadConfig } from '@/lib/config/loadConfig';
+import '@testing-library/jest-dom';
+import { withNextPageProps } from '@/tests/helpers/nextjs-types';
 
-// Mock the useDirectoryWithFallback hook
-jest.mock('@/lib/config/useDirectoryWithFallback', () => ({
-  useDirectoryWithFallback: jest.fn()
-}));
+// Import the page component with the correct type wrapper
+const DirectoryPage = withNextPageProps(
+  require('@/app/directory/[slug]/page').default
+);
 
-// Mock the loadConfig function
+// Mock loadConfig function
 jest.mock('@/lib/config/loadConfig', () => ({
-  loadConfig: jest.fn()
+  loadConfig: jest.fn().mockImplementation((slug) => {
+    if (slug === 'notary') {
+      return {
+        name: 'notary',
+        title: 'Notary Directory',
+        description: 'Find notaries near you',
+        theme: {
+          colors: {
+            primary: '#1e40af',
+            secondary: '#1e3a8a',
+            accent: '#f97316'
+          }
+        },
+        hero: {
+          heading: 'Find Notaries Near You',
+          subheading: 'Quick, reliable notary services in your area'
+        },
+        serviceTypes: ['Mobile Notary', 'In-Office Notary'],
+        navigation: {
+          header: {
+            ctaButton: {
+              text: 'Get Listed',
+              url: '/get-listed'
+            }
+          }
+        }
+      };
+    }
+    return {
+      name: 'default',
+      title: 'Directory',
+      description: 'Directory description',
+      theme: {
+        colors: {
+          primary: '#1e40af',
+          secondary: '#1e3a8a',
+          accent: '#f97316'
+        }
+      },
+      hero: {
+        heading: 'Welcome to Directory',
+        subheading: 'Find what you need'
+      },
+      serviceTypes: [],
+      navigation: {
+        header: {
+          ctaButton: {
+            text: 'Get Started',
+            url: '#'
+          }
+        }
+      }
+    };
+  })
 }));
 
-// Mock Next.js Link component
-jest.mock('next/link', () => {
-  return ({ children, href, className }: { children: React.ReactNode; href: string; className?: string }) => {
-    return (
-      <a href={href} className={className} data-testid={`link-to-${href}`}>
-        {children}
-      </a>
-    );
-  };
-});
+// Mock Next.js components
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <a href={href} data-testid="mock-link">{children}</a>
+  ),
+}));
 
-// Create a custom render function to wrap with client component wrappers if needed
-function customRender(ui: React.ReactElement) {
+jest.mock('next/image', () => ({
+  __esModule: true,
+  default: ({ src, alt }: { src: string; alt: string }) => (
+    <img src={src} alt={alt} data-testid="mock-image" />
+  ),
+}));
+
+// Custom render function to provide any necessary context
+const customRender = (ui: React.ReactElement) => {
   return render(ui);
-}
+};
 
 describe('DirectoryPage', () => {
-  const mockConfig = {
-    name: 'notary',
-    title: 'Notary Finder Now',
-    description: 'Find qualified notaries in your area',
-    hero: {
-      heading: 'Find a Qualified Notary Near You — Now!',
-      subheading: 'Connect with mobile, 24-hour, and free notary services in your area instantly.'
-    },
-    serviceTypes: [
-      'Mobile Notaries',
-      '24-Hour Availability',
-      'Remote Notaries',
-      'Free Services'
-    ],
-    theme: {
-      name: 'blue-notary',
-      colors: {
-        primary: '#1e40af',
-        secondary: '#1e3a8a',
-        accent: '#f97316'
-      }
-    }
-  };
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    
-    // Mock loadConfig to return our mockConfig
-    (loadConfig as jest.Mock).mockReturnValue(mockConfig);
-    
-    // Mock successful config loading
-    (useDirectoryWithFallback as jest.Mock).mockReturnValue({
-      config: mockConfig,
-      loading: false,
-      error: null,
-      isFallback: false
-    });
-  });
-
-  it('should render the hero section with correct content', () => {
+  it('should render hero section with correct content', () => {
     customRender(<DirectoryPage params={{ slug: 'notary' }} />);
     
-    // Check that the hero heading is rendered
-    const headingElement = screen.getByRole('heading', { 
-      name: 'Find a Qualified Notary Near You — Now!',
-      level: 1
-    });
-    expect(headingElement).toBeInTheDocument();
-    
-    // Check that the hero subheading is rendered
-    const subheadingText = 'Connect with mobile, 24-hour, and free notary services in your area instantly.';
-    const subheadingElement = screen.getByText(subheadingText);
-    expect(subheadingElement).toBeInTheDocument();
+    // Check hero content
+    expect(screen.getByText('Find Notaries Near You')).toBeInTheDocument();
+    expect(screen.getByText('Quick, reliable notary services in your area')).toBeInTheDocument();
   });
-
-  it('should render the search form', () => {
+  
+  it('should render search form with location and service type inputs', () => {
     customRender(<DirectoryPage params={{ slug: 'notary' }} />);
     
-    // Check for search form elements - using more specific selectors
-    const searchButton = screen.getByRole('button', { name: /search/i });
-    expect(searchButton).toBeInTheDocument();
+    // Check search form elements
+    expect(screen.getByLabelText('Location')).toBeInTheDocument();
+    expect(screen.getByLabelText('Service Type')).toBeInTheDocument();
+    expect(screen.getByText('Search')).toBeInTheDocument();
   });
-
-  it('should render service types correctly', () => {
+  
+  it('should display service types from the directory config', () => {
     customRender(<DirectoryPage params={{ slug: 'notary' }} />);
     
-    // Check that service types section exists
-    const serviceSectionHeading = screen.getByRole('heading', { name: /our services/i });
-    expect(serviceSectionHeading).toBeInTheDocument();
-    
-    // Use getAllByText to get all instances of duplicated text
-    const mobileNotaryInstances = screen.getAllByText('Mobile Notaries');
-    expect(mobileNotaryInstances.length).toBeGreaterThanOrEqual(2); // At least in dropdown and as card
-    
-    const hourAvailabilityInstances = screen.getAllByText('24-Hour Availability');
-    expect(hourAvailabilityInstances.length).toBeGreaterThanOrEqual(2);
-    
-    // Verify that the service type dropdown exists
-    const dropdown = screen.getByLabelText(/service type/i);
-    expect(dropdown).toBeInTheDocument();
+    // Check that service types are rendered
+    expect(screen.getByText('Mobile Notary')).toBeInTheDocument();
+    expect(screen.getByText('In-Office Notary')).toBeInTheDocument();
   });
-
-  it('should handle loading state', () => {
-    // Mock loading state
-    (useDirectoryWithFallback as jest.Mock).mockReturnValue({
-      config: null,
-      loading: true,
-      error: null,
-      isFallback: false
-    });
-    
-    // In a real component, there would be a loading indicator
-    // For now, we'll just verify no errors are thrown during render
-    expect(() => {
+  
+  describe('CTA Section', () => {
+    it('should render the CTA section with configured button text', () => {
       customRender(<DirectoryPage params={{ slug: 'notary' }} />);
-    }).not.toThrow();
-  });
-
-  it('should handle error state', () => {
-    // Mock error state
-    (useDirectoryWithFallback as jest.Mock).mockReturnValue({
-      config: null,
-      loading: false,
-      error: new Error('Failed to load config'),
-      isFallback: false
+      
+      // Check CTA content
+      expect(screen.getByText('Ready to Get Listed?')).toBeInTheDocument();
+      expect(screen.getByText('Get Listed')).toBeInTheDocument();
+      expect(screen.getByText('Get Listed').closest('a')).toHaveAttribute('href', '/get-listed');
     });
     
-    // In a real component, there would be an error message
-    // For now, we'll just verify no errors are thrown during render
-    expect(() => {
+    it('should use default values if CTA button config is missing', () => {
+      // Modify the mock to return a config without CTA button
+      jest.spyOn(require('@/lib/config/loadConfig'), 'loadConfig').mockReturnValueOnce({
+        name: 'notary',
+        title: 'Notary Directory',
+        description: 'Find notaries near you',
+        theme: {
+          colors: {
+            primary: '#1e40af',
+            secondary: '#1e3a8a',
+            accent: '#f97316'
+          }
+        },
+        hero: {
+          heading: 'Find Notaries Near You',
+          subheading: 'Quick, reliable notary services in your area'
+        },
+        serviceTypes: ['Mobile Notary', 'In-Office Notary'],
+        navigation: {
+          // Intentionally omitting header.ctaButton
+        }
+      });
+      
       customRender(<DirectoryPage params={{ slug: 'notary' }} />);
-    }).not.toThrow();
+      
+      // Check that fallback text is used
+      expect(screen.getByText('Request Featured Listing')).toBeInTheDocument();
+    });
   });
 });

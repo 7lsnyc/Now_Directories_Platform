@@ -4,6 +4,7 @@ import { loadConfig } from '@/lib/config/loadConfig';
 import ThemeProvider from '@/components/ThemeProvider';
 import { headers } from 'next/headers';
 import DirectoryDebug from '@/components/DirectoryDebug';
+import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper';
 
 export const metadata: Metadata = {
   title: 'Now Directories Platform',
@@ -30,8 +31,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <ThemeProvider config={config}>
-          {children}
-          <DirectoryDebug />
+          <ErrorBoundaryWrapper>
+            {children}
+            <DirectoryDebug />
+          </ErrorBoundaryWrapper>
         </ThemeProvider>
       </body>
     </html>

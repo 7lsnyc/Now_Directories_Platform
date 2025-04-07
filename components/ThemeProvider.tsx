@@ -1,45 +1,54 @@
-import { FC, ReactNode } from 'react';
-import { DirectoryConfig } from '@/lib/config/loadConfig';
-import { getTextColorForBackground } from '@/utils/accessibility';
+import { ReactNode } from 'react';
+import { DEFAULT_THEME_COLORS } from '@/constants/theme';
 
-interface ThemeProviderProps {
-  config: DirectoryConfig;
+interface ThemeColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+  primaryText?: string;
+  secondaryText?: string;
+  accentText?: string;
+}
+
+export interface ThemeProviderProps {
   children: ReactNode;
+  directory: string;
+  themeColors?: ThemeColors;
 }
 
 /**
- * ThemeProvider component that applies theme colors from config
- * as CSS variables to its children
+ * ThemeProvider component
+ * Sets CSS variables for the directory theme colors
+ * For multi-domain architecture, this applies brand colors from the Supabase directories table
  */
-const ThemeProvider: FC<ThemeProviderProps> = ({ config, children }) => {
-  // Extract theme colors from config
-  const primaryColor = config.theme?.colors?.primary || '#1e40af'; // Default blue fallback
-  const secondaryColor = config.theme?.colors?.secondary || '#1e3a8a';
-  const accentColor = config.theme?.colors?.accent || '#f97316';
+export default function ThemeProvider({ children, directory, themeColors }: ThemeProviderProps) {
+  // Use provided themeColors or fallback to defaults
+  const { 
+    primary = DEFAULT_THEME_COLORS.primary, 
+    secondary = DEFAULT_THEME_COLORS.secondary, 
+    accent = DEFAULT_THEME_COLORS.accent, 
+    primaryText = DEFAULT_THEME_COLORS.primaryText, 
+    secondaryText = DEFAULT_THEME_COLORS.secondaryText, 
+    accentText = DEFAULT_THEME_COLORS.accentText 
+  } = themeColors || DEFAULT_THEME_COLORS;
   
-  // Determine text colors for best contrast
-  const primaryTextColor = getTextColorForBackground(primaryColor);
-  const secondaryTextColor = getTextColorForBackground(secondaryColor);
-  const accentTextColor = getTextColorForBackground(accentColor);
-  
-  // Apply theme colors as CSS variables
-  const themeStyle = {
-    // Background colors
-    '--color-primary': primaryColor,
-    '--color-secondary': secondaryColor,
-    '--color-accent': accentColor,
-    
-    // Text colors for those backgrounds 
-    '--color-primary-text': primaryTextColor,
-    '--color-secondary-text': secondaryTextColor,
-    '--color-accent-text': accentTextColor,
-  } as React.CSSProperties;
-
   return (
-    <div className={`theme-${config.name}`} style={themeStyle} data-testid="theme-provider">
+    <div 
+      className="theme-provider"
+      style={{
+        // Set theme colors as CSS variables
+        '--color-primary': primary,
+        '--color-secondary': secondary,
+        '--color-accent': accent,
+        '--color-primary-text': primaryText,
+        '--color-secondary-text': secondaryText,
+        '--color-accent-text': accentText,
+        // Set theme gradient
+        '--gradient-primary': `linear-gradient(135deg, ${primary} 0%, ${secondary} 100%)`,
+      } as React.CSSProperties}
+      data-directory={directory}
+    >
       {children}
     </div>
   );
-};
-
-export default ThemeProvider;
+}

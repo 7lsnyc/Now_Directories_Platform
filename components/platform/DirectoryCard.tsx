@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import Link from 'next/link';
 import { 
   Shield,
   ShieldCheck,  
@@ -24,14 +25,23 @@ export interface DirectoryCardProps {
   description: string;
   color: string;
   url: string;
+  domain?: string; // External domain to link to
   isNew?: boolean;
 }
 
 /**
  * Directory card component displaying a single directory with icon, title and description
- * Cards are clickable and open the directory URL in a new tab
+ * Cards are clickable and open the directory URL
  */
-export default function DirectoryCard({ icon, title, description, color, url, isNew = false }: DirectoryCardProps) {
+export default function DirectoryCard({ 
+  icon, 
+  title, 
+  description, 
+  color, 
+  url, 
+  domain,
+  isNew = false 
+}: DirectoryCardProps) {
   // Map icon strings to Lucide icon components with exact names from the library
   const iconMap: Record<string, React.ElementType> = {
     'Shield': Shield,
@@ -55,23 +65,38 @@ export default function DirectoryCard({ icon, title, description, color, url, is
   // Get the icon component or default to Shield
   const IconComponent = iconMap[icon] || Shield;
 
+  // For local testing, just use the path-based url instead of domain-based
+  // This ensures compatibility with the browser preview environment
+  const href = url;
+  
+  // Create card content separate from the link wrapper
+  const cardContent = (
+    <>
+      {/* New badge */}
+      {isNew && (
+        <span className="absolute top-2 right-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+          New
+        </span>
+      )}
+      
+      {/* Icon */}
+      <div className="text-white mb-3">
+        <IconComponent size={32} />
+      </div>
+      
+      {/* Title and description */}
+      <h3 className="text-lg font-bold text-white mb-1">{title}</h3>
+      <p className="text-white/80 text-sm">{description}</p>
+    </>
+  );
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+    <Link
+      href={href}
       className={`${color} relative p-4 sm:p-6 rounded-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-white/50 flex flex-col h-full`}
       aria-label={`${title} - ${description}`}
     >
-      <IconComponent className="w-6 h-6 sm:w-8 sm:h-8 text-white mb-2 sm:mb-3" />
-      <h3 className="text-base sm:text-lg font-semibold text-white mb-1">{title}</h3>
-      <p className="text-xs sm:text-sm text-white/90">{description}</p>
-      
-      {isNew && (
-        <span className="absolute top-2 right-2 sm:top-3 sm:right-3 bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">
-          NEW
-        </span>
-      )}
-    </a>
+      {cardContent}
+    </Link>
   );
 }

@@ -26,8 +26,15 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Build
+    - name: Lint
+      run: npm run lint
+      
+    - name: Build (with TypeScript check)
       run: npm run build
+      env:
+        # Placeholder values for CI only - real values should be in GitHub secrets
+        NEXT_PUBLIC_SUPABASE_URL: "https://example.com"
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: "example-key"
     
     - name: Test
       run: npm test
