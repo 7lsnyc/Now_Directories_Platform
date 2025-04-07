@@ -5,6 +5,7 @@
  * - Pre-computed values to avoid runtime overhead
  * - Smaller bundle size impact
  * - Still maintains type safety and error handling
+ * - Build-safe for Vercel deployments
  */
 
 import { ConfigError } from './errors/ConfigError';
@@ -39,6 +40,9 @@ const ENV = {
   isDev: process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test',
 };
 
+// Detect if we're in the Vercel build phase (no access to most env vars)
+const isVercelBuild = process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_SUPABASE_URL === undefined;
+
 // Validators (only used during initialization)
 const isValidUrl = (url: string): boolean => {
   try {
@@ -52,10 +56,15 @@ const isValidUrl = (url: string): boolean => {
 // Validate and prepare critical environment variables
 // This runs once at import time rather than on each access
 const getCriticalVar = (key: string, validator?: (val: string) => boolean): string => {
+  // Skip validation during Vercel build phase
+  if (isVercelBuild) {
+    return `build-placeholder-${key.toLowerCase()}`;
+  }
+
   const value = process.env[key];
   
   if (!value) {
-    if (ENV.isProd) {
+    if (ENV.isProd && !isVercelBuild) {
       throw new ConfigError(`Missing critical environment variable: ${key}`);
     }
     console.warn(`⚠️ Missing critical environment variable: ${key}. Using fallback for development only.`);
@@ -63,7 +72,7 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
   }
   
   if (validator && !validator(value)) {
-    if (ENV.isProd) {
+    if (ENV.isProd && !isVercelBuild) {
       throw new ConfigError(`Invalid value for environment variable: ${key}`);
     }
     console.warn(`⚠️ Invalid value for environment variable: ${key}. Using fallback for development only.`);
@@ -97,7 +106,7 @@ export const env = {
   
   // Application config with defaults
   NODE_ENV: getNonCriticalVar<'development' | 'production' | 'test'>('NODE_ENV', 'development'),
-  DEFAULT_DIRECTORY_SLUG: getNonCriticalVar('DEFAULT_DIRECTORY_SLUG', 'notary'),
+  DEFAULT_DIRECTORY_SLUG: getNonCriticalVar('DEFAULT_DIRECTORY_SLUG', 'notaryfindernow'),
   
   // Optional configs
   ENABLE_ANALYTICS: getNonCriticalVar('ENABLE_ANALYTICS', ENV.isProd, toBoolean),
@@ -112,12 +121,18 @@ export const env = {
   // Environment helpers
   isProd: ENV.isProd,
   isDev: ENV.isDev,
+  isVercelBuild,
   
   /**
    * Helper method to check if all critical variables are set correctly
    * Use this to determine if the application can function properly
    */
   checkCriticalVars(): { isValid: boolean; errors: string[] } {
+    // Skip validation during Vercel build phase
+    if (isVercelBuild) {
+      return { isValid: true, errors: [] };
+    }
+
     const errors: string[] = [];
     
     // Check Supabase URL
