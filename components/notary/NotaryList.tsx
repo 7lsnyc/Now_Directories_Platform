@@ -5,6 +5,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase';
 import NotarySearchForm, { SearchFilters } from './NotarySearchForm';
 import { kmToMiles } from '@/utils/geocoding';
+import { Directory, DirectoryThemeColors } from '@/types/directory';
 
 // Types
 type Notary = Database['public']['Tables']['notaries']['Row'];
@@ -15,14 +16,20 @@ interface Coordinates {
 }
 
 interface NotaryListProps {
-  slug?: string;
+  slug: string;
+  directoryData: Directory | null;
+  themeColors: DirectoryThemeColors;
 }
 
 /**
  * NotaryList component with geolocation-enhanced search
  * Displays a search form and notary results with filters
  */
-export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps) {
+export default function NotaryList({ 
+  slug = 'notaryfindernow',
+  directoryData,
+  themeColors 
+}: NotaryListProps) {
   // State
   const [notaries, setNotaries] = useState<Notary[]>([]);
   const [filteredNotaries, setFilteredNotaries] = useState<Notary[]>([]);
@@ -30,6 +37,11 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uniqueServices, setUniqueServices] = useState<string[]>([]);
+  const [currentFilters, setCurrentFilters] = useState<SearchFilters>({ 
+    serviceType: '', 
+    minimumRating: false, 
+    maxDistance: 20 
+  });
   
   // Use a ref for the Supabase client to avoid recreating it on each render
   const supabaseRef = useRef<SupabaseClient<Database> | null>(null);
@@ -41,46 +53,108 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
+      console.log('[NotaryList] Supabase client initialized');
     }
   }, []);
-  
-  /**
-   * Load all available service types for the filter dropdown
-   */
-  const loadAvailableServices = useCallback(async () => {
-    if (!supabaseRef.current) return;
-    
-    try {
-      const { data, error } = await supabaseRef.current
-        .from('notaries')
-        .select('services')
-        .eq('directory_slug', slug);
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (data && data.length > 0) {
-        // Extract all unique services from the array of services arrays
-        const allServices = data
-          .flatMap(notary => notary.services || [])
-          .filter(Boolean) as string[];
-        
-        // Remove duplicates using Array.filter for better compatibility
-        const uniqueServicesList = allServices.filter((service, index, self) => 
-          self.indexOf(service) === index
-        );
-        setUniqueServices(uniqueServicesList);
-      }
-    } catch (err) {
-      console.error('Error loading service types:', err);
-    }
-  }, [supabaseRef, slug]);
 
   useEffect(() => {
-    // Load available service types on component mount
+    const checkNotaryData = async () => {
+      if (supabaseRef.current) {
+        try {
+          console.log(`[NotaryList] Checking if notaries exist for slug: ${slug}`);
+          
+          // First check with directory slug filter
+          const { data: directoryData, error: directoryError, count: directoryCount } = await supabaseRef.current
+            .from('notaries')
+            .select('*', { count: 'exact' })
+            .eq('directory_slug', slug);
+          
+          if (directoryError) {
+            console.error(`[NotaryList] Error fetching initial notary data:`, directoryError);
+          } else {
+            console.log(`[NotaryList] Found ${directoryCount} notaries for ${slug}`, 
+              directoryData?.length ? `First notary: ${directoryData[0].name}` : 'No data');
+            
+            if (!directoryData || directoryData.length === 0) {
+              console.warn(`[NotaryList] No notary data found for ${slug}. Search will return empty results.`);
+              
+              // Check without directory filter
+              const { data: allData, count: totalCount } = await supabaseRef.current
+                .from('notaries')
+                .select('*', { count: 'exact' });
+                
+              console.log(`[NotaryList] Total notaries in table (any directory): ${totalCount}`);
+              
+              if (allData && allData.length > 0) {
+                // Analyze directory slugs to help diagnose the issue
+                const slugs = allData.map(n => n.directory_slug);
+                const uniqueSlugs = Array.from(new Set(slugs));
+                console.log(`[NotaryList] Found these directory_slug values in the database:`, uniqueSlugs);
+                
+                // Check if we have a city match without the directory slug
+                const nyMatches = allData.filter(n => 
+                  n.city?.toLowerCase().includes('new york') || 
+                  n.state?.toLowerCase() === 'ny' ||
+                  n.state?.toLowerCase() === 'new york'
+                );
+                
+                if (nyMatches.length > 0) {
+                  console.log(`[NotaryList] Found ${nyMatches.length} New York notaries, but with wrong directory_slug:`, 
+                    nyMatches.map(n => ({ 
+                      name: n.name, 
+                      city: n.city, 
+                      state: n.state, 
+                      directory_slug: n.directory_slug 
+                    }))
+                  );
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[NotaryList] Error in initial data check:', err);
+        }
+      }
+    };
+    
+    checkNotaryData();
+  }, [slug]);
+
+  useEffect(() => {
+    const loadAvailableServices = async () => {
+      if (!supabaseRef.current) return;
+      
+      try {
+        const { data, error } = await supabaseRef.current
+          .from('notaries')
+          .select('services')
+          .eq('directory_slug', slug);
+        
+        if (error) {
+          console.error('[NotaryList] Error loading services:', error);
+          throw error;
+        }
+        
+        if (data && data.length > 0) {
+          const allServices = data
+            .flatMap(notary => notary.services || [])
+            .filter(Boolean) as string[];
+          
+          const uniqueServicesList = allServices.filter((service, index, self) => 
+            self.indexOf(service) === index
+          );
+          setUniqueServices(uniqueServicesList);
+          console.log(`[NotaryList] Loaded ${uniqueServicesList.length} unique services`, uniqueServicesList);
+        } else {
+          console.warn('[NotaryList] No services found for this directory');
+        }
+      } catch (err) {
+        console.error('Error loading service types:', err);
+      }
+    };
+    
     loadAvailableServices();
-  }, [loadAvailableServices]);
+  }, [supabaseRef, slug]);
 
   /**
    * Search for notaries based on location and apply filters
@@ -91,9 +165,12 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
   ) => {
     setLoading(true);
     setError(null);
+    setCurrentFilters(filters);
+    
+    console.log(`[NotaryList] Searching near: ${coordinates.latitude},${coordinates.longitude}`, 
+      `Filters:`, filters);
     
     try {
-      // Validate coords
       if (!coordinates || !coordinates.latitude || !coordinates.longitude) {
         throw new Error('Invalid coordinates. Please try again with a valid location.');
       }
@@ -104,37 +181,45 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
         .select('*')
         .eq('directory_slug', slug);
       
-      // Apply service type filter if selected
       if (filters.serviceType) {
+        console.log(`[NotaryList] Adding service filter: ${filters.serviceType}`);
         query = query.contains('services', [filters.serviceType]);
       }
       
-      // Apply minimum rating filter if selected
       if (filters.minimumRating) {
+        console.log(`[NotaryList] Adding minimum rating filter: 3.5+`);
         query = query.gte('rating', 3.5);
       }
       
+      console.log(`[NotaryList] Executing search query for ${slug}`);
       const { data, error } = await query;
       
       if (error) {
+        console.error(`[NotaryList] Search query error:`, error);
         throw error;
       }
+      
+      console.log(`[NotaryList] Search query returned ${data?.length || 0} results before distance filtering`);
       
       if (!data || data.length === 0) {
         setNotaries([]);
         setFilteredNotaries([]);
         setSearchPerformed(true);
+        console.log(`[NotaryList] No results found from database query`);
         return;
       }
       
-      // Calculate distance for each notary and sort by proximity
       const notariesWithDistance = data.map(notary => {
         const lat1 = coordinates.latitude;
         const lon1 = coordinates.longitude;
-        const lat2 = notary.latitude || 0; // Default to 0 if undefined
-        const lon2 = notary.longitude || 0; // Default to 0 if undefined
+        const lat2 = notary.latitude;
+        const lon2 = notary.longitude;
         
-        // Calculate distance in KM, convert to miles for display
+        if (!lat2 || !lon2) {
+          console.warn(`[NotaryList] Notary ${notary.id} missing coordinates`);
+          return { ...notary, distance: 99999 };
+        }
+        
         const distanceKm = calculateDistance(lat1, lon1, lat2, lon2);
         const distanceMiles = kmToMiles(distanceKm);
         
@@ -144,31 +229,38 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
         };
       });
       
-      // Sort by distance (closest first)
-      notariesWithDistance.sort((a, b) => a.distance - b.distance);
-      
-      // Only show notaries within a 50-mile radius
-      const nearbyNotaries = notariesWithDistance.filter(
-        notary => notary.distance <= 50
+      const sortedNotaries = notariesWithDistance.sort((a, b) => 
+        (a.distance as number) - (b.distance as number)
       );
       
-      setNotaries(notariesWithDistance);
-      setFilteredNotaries(nearbyNotaries);
+      console.log(`[NotaryList] Sorted ${sortedNotaries.length} notaries by distance`);
+      if (sortedNotaries.length > 0) {
+        console.log(`[NotaryList] Closest notary: ${sortedNotaries[0].name} (${(sortedNotaries[0].distance as number).toFixed(1)} miles)`);
+      }
+      
+      const maxDistance = filters.maxDistance || 20;
+      console.log(`[NotaryList] Filtering to max distance: ${maxDistance} miles`);
+      
+      const filteredByDistance = sortedNotaries.filter(
+        notary => (notary.distance as number) <= maxDistance
+      );
+      
+      console.log(`[NotaryList] After distance filtering: ${filteredByDistance.length} results`);
+      
+      setNotaries(sortedNotaries);
+      setFilteredNotaries(filteredByDistance);
       setSearchPerformed(true);
     } catch (err) {
-      console.error('Error searching notaries:', err);
-      setError(
-        err instanceof Error 
-          ? err.message 
-          : 'Failed to search notaries. Please try again.'
-      );
+      setError(err instanceof Error ? err.message : 'Error searching for notaries');
+      console.error('Search error:', err);
     } finally {
       setLoading(false);
     }
   };
-  
+
   /**
    * Calculate the distance between two coordinate points
+   * Using the Haversine formula to calculate distance between two points on a sphere
    */
   const calculateDistance = (
     lat1: number, 
@@ -176,20 +268,32 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
     lat2: number, 
     lon2: number
   ): number => {
-    const R = 6371; // Radius of the Earth in km
+    const R = 6371; // Radius of the earth in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     
     const a = 
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+      Math.sin(dLon/2) * Math.sin(dLon/2);
     
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     const distance = R * c; // Distance in km
     
     return distance;
   };
+
+  // Log directory info for debugging
+  useEffect(() => {
+    if (directoryData) {
+      console.log(`[NotaryList] Rendering for directory: ${directoryData.name} (${slug})`);
+    } else {
+      console.warn(`[NotaryList] No directory data available for slug: ${slug}`);
+    }
+  }, [directoryData, slug]);
+  
+  // Get primary color from directory data or fallback to theme colors
+  const primaryColor = directoryData?.brand_color_primary || themeColors.primary;
 
   return (
     <div className="space-y-6">
@@ -198,13 +302,19 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
         onSearch={searchNotaries} 
         availableServices={uniqueServices}
         isLoading={loading}
+        primaryColor={primaryColor}
       />
       
       {/* Results Section */}
       <div className="mt-8">
         {loading && (
           <div className="p-4 text-center">
-            <div className="inline-block animate-spin h-8 w-8 border-4 border-theme-primary border-t-transparent rounded-full"></div>
+            <div 
+              className="inline-block animate-spin h-8 w-8 border-4 rounded-full" 
+              style={{ 
+                borderColor: `${primaryColor} transparent transparent transparent` 
+              }}
+            ></div>
             <p className="mt-2">Loading results...</p>
           </div>
         )}
@@ -219,6 +329,11 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
           <div className="p-6 bg-gray-50 border border-gray-200 rounded-md text-gray-700 text-center">
             <p className="text-lg font-medium">No notaries found in your area</p>
             <p className="mt-2">Try adjusting your filters or searching a different location.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              {notaries.length > 0 ? 
+                `Found ${notaries.length} notaries, but none within ${currentFilters.maxDistance || 20} miles.` : 
+                'No notaries found in the database for this directory.'}
+            </p>
           </div>
         )}
         
@@ -242,7 +357,7 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
                   
                   {/* Distance */}
                   {'distance' in notary && (
-                    <div className="text-sm text-theme-primary font-medium">
+                    <div className="text-sm font-medium" style={{ color: primaryColor }}>
                       {(notary.distance as number).toFixed(1)} miles away
                     </div>
                   )}
@@ -263,7 +378,8 @@ export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps
                     {notary.services?.slice(0, 3).map((service, index) => (
                       <span 
                         key={index} 
-                        className="bg-theme-primary text-white text-xs px-2 py-1 rounded"
+                        className="text-white text-xs px-2 py-1 rounded"
+                        style={{ backgroundColor: primaryColor }}
                       >
                         {service}
                       </span>
