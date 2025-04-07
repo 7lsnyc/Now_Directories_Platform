@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: 'A platform for managing directories',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -21,7 +21,7 @@ export default function RootLayout({
   const directorySlug = headersList.get('x-directory-slug') || 'notary';
   
   // Load configuration for the current directory based on the slug
-  const config = loadConfig(directorySlug);
+  const config = await loadConfig(directorySlug);
   
   // Update metadata based on directory config
   metadata.title = config.seo?.title || 'Now Directories Platform';
@@ -30,7 +30,14 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ThemeProvider config={config}>
+        <ThemeProvider 
+          directory={directorySlug}
+          themeColors={{
+            primary: config.theme?.colors?.primary || '#0f766e',
+            secondary: config.theme?.colors?.secondary || '#0369a1',
+            accent: config.theme?.colors?.accent || '#4f46e5'
+          }}
+        >
           <ErrorBoundaryWrapper>
             {children}
             <DirectoryDebug />

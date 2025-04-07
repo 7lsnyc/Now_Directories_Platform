@@ -16,7 +16,7 @@ export const getSupabaseServerClient = async () => {
   const host = cookieStore.get('x-host')?.value || '';
   
   // Determine directory slug from host
-  const directorySlug = domainMap[host] || env.DEFAULT_DIRECTORY_SLUG;
+  const directorySlug = domainMap.get(host) || env.DEFAULT_DIRECTORY_SLUG;
   
   // Create Supabase client with custom fetch handler that adds JWT claims
   // This approach adds the directory_slug to the token used for all Supabase requests
@@ -33,6 +33,7 @@ export const getSupabaseServerClient = async () => {
       },
       global: {
         // Custom fetch handler to add directory_slug to the request
+        // Supabase will use this to set JWT claims in server functions or edge functions
         fetch: async (url, options = {}) => {
           // Get the existing headers
           const headers = new Headers(options.headers);

@@ -14,16 +14,21 @@ export function useDirectoryConfig(slug?: string) {
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    try {
-      // Load the config for the specified slug
-      const directoryConfig = loadConfig(slug);
-      setConfig(directoryConfig);
-      setLoading(false);
-    } catch (err) {
-      console.error(`Error loading directory configuration for ${slug}:`, err);
-      setError(err instanceof Error ? err : new Error(`Unknown error loading config for ${slug}`));
-      setLoading(false);
+    async function fetchConfig() {
+      try {
+        setLoading(true);
+        // Load the config for the specified slug
+        const directoryConfig = await loadConfig(slug);
+        setConfig(directoryConfig);
+        setLoading(false);
+      } catch (err) {
+        console.error(`Error loading directory configuration for ${slug}:`, err);
+        setError(err instanceof Error ? err : new Error(`Unknown error loading config for ${slug}`));
+        setLoading(false);
+      }
     }
+    
+    fetchConfig();
   }, [slug]);
 
   return {

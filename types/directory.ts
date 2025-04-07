@@ -31,6 +31,10 @@ export interface Directory {
   is_searchable: boolean;
   is_active: boolean;
   priority: number;
+  
+  // Features
+  features?: string[];
+  default_search_radius?: number;
 }
 
 /**
