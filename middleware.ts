@@ -2,26 +2,53 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware';
 import { addSecurityHeaders, applyCorsPolicies, validateInput } from '@/lib/security/securityMiddleware';
 
-// Types
+/**
+ * Directory information retrieved from Supabase
+ * Contains essential data needed for middleware routing and tenant identification
+ */
 interface DirectoryInfo {
+  /** Unique slug identifier for the directory */
   directory_slug: string;
+  /** Domain associated with this directory */
   domain: string;
+  /** Primary brand color for the directory */
   brand_color_primary: string;
 }
 
-// In-memory cache for directory info to reduce database calls
-// This is cleared on cold starts, which is fine for our use case
+/**
+ * In-memory cache for directory info to reduce database calls
+ * This is cleared on cold starts, which is acceptable for our use case
+ * Helps reduce Supabase database load and improves response times
+ */
 const DIRECTORY_CACHE = new Map<string, CacheEntry>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
 
+/**
+ * Structure for cached directory entries
+ * Includes timestamp for TTL-based cache invalidation
+ */
 interface CacheEntry {
+  /** The cached directory data or null if not found */
   data: DirectoryInfo | null;
+  /** Timestamp when this entry was cached */
   timestamp: number;
 }
 
 /**
- * Middleware for the Now Directories Platform
- * Handles domain-based routing to specific directories
+ * Multi-tenant middleware for the Now Directories Platform
+ * 
+ * Core routing logic for the entire platform that:
+ * 1. Determines which directory/tenant a request is for based on hostname or path
+ * 2. Routes requests to the appropriate directory in the app/directory/[slug] structure
+ * 3. Adds security headers to all responses
+ * 4. Implements caching to reduce database load
+ * 5. Handles error cases and provides appropriate redirects
+ * 
+ * All directory/tenant identification uses Supabase as the source of truth.
+ * No local fallbacks are implemented to ensure consistency across environments.
+ * 
+ * @param {NextRequest} request - The incoming request object
+ * @returns {Promise<NextResponse>} The response with proper routing and headers
  */
 export async function middleware(request: NextRequest) {
   const { pathname, hostname } = new URL(request.url);
@@ -173,7 +200,11 @@ export async function middleware(request: NextRequest) {
   }
 }
 
-// For better performance, limit middleware to specific paths
+/**
+ * Middleware configuration
+ * Limits middleware execution to only the necessary routes for better performance
+ * Excludes static files, Next.js internals, and API routes
+ */
 export const config = {
   matcher: [
     /*
