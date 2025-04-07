@@ -29,7 +29,7 @@ const DirectoryLayout = async ({
     const { data, error } = await supabase
       .from('directories')
       .select('*')
-      .eq('slug', params.slug)
+      .eq('directory_slug', params.slug)
       .single();
       
     if (error) {
@@ -90,11 +90,24 @@ const DirectoryLayout = async ({
   
   // If Supabase didn't return data, fallback to local JSON config
   if (!directoryConfig) {
-    directoryConfig = loadConfig(params.slug);
+    try {
+      console.log(`[DEBUG Layout] No Supabase data found for ${params.slug}, using loadConfig`);
+      // Use await since loadConfig is now async
+      directoryConfig = await loadConfig(params.slug);
+      console.log(`[DEBUG Layout] Config loaded via loadConfig:`, {
+        name: directoryConfig.name,
+        title: directoryConfig.title
+      });
+    } catch (error) {
+      console.error(`[DEBUG Layout] Error in loadConfig for ${params.slug}:`, error);
+      notFound();
+      return null;
+    }
   }
 
   // If config is default (not found in Supabase or local files), return 404
   if (directoryConfig.name === 'default') {
+    console.log(`[DEBUG Layout] Directory not found for ${params.slug}, returning 404`);
     notFound();
     // Return null for testing environments
     return null;

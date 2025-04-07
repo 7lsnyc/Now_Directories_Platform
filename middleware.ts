@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware';
 import { addSecurityHeaders, applyCorsPolicies, validateInput } from '@/lib/security/securityMiddleware';
+import { LOCAL_DEV_DIRECTORY, LOCAL_PATH_TO_DIRECTORY_MAP } from '@/lib/localDevelopment';
 
 // Types
 interface DirectoryInfo {
@@ -41,13 +42,56 @@ export async function middleware(request: NextRequest) {
     response = addSecurityHeaders(response);
     response = applyCorsPolicies(request, response);
     
+    // Local development handling - allow testing directories without domain setup
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      // Check if the pathname maps to a specific directory for testing
+      const pathParts = pathname.split('/').filter(Boolean);
+      const directPathMatch = pathParts[0] && LOCAL_PATH_TO_DIRECTORY_MAP[`/${pathParts[0]}`];
+      
+      if (directPathMatch) {
+        // Path-based directory mapping for development
+        const dirSlug = validateInput(directPathMatch, 'slug');
+        if (dirSlug) {
+          // Strip the directory part from the path when rewriting
+          const newPath = pathname.replace(`/${pathParts[0]}`, '');
+          const targetUrl = new URL(`/directory/${dirSlug}${newPath || '/'}`, request.url);
+          
+          const dirResponse = NextResponse.rewrite(targetUrl);
+          response = addSecurityHeaders(dirResponse);
+          response = applyCorsPolicies(request, dirResponse);
+          
+          // Set debug headers
+          response.headers.set('x-directory-slug', dirSlug);
+          response.headers.set('x-debug-mode', 'path-mapping');
+          
+          return response;
+        }
+      }
+      
+      // Default directory for localhost when no path match is found
+      if (LOCAL_DEV_DIRECTORY) {
+        const validatedSlug = validateInput(LOCAL_DEV_DIRECTORY, 'slug');
+        if (validatedSlug) {
+          const dirResponse = NextResponse.rewrite(
+            new URL(`/directory/${validatedSlug}${pathname}`, request.url)
+          );
+          
+          response = addSecurityHeaders(dirResponse);
+          response = applyCorsPolicies(request, dirResponse);
+          
+          // Set debug headers
+          response.headers.set('x-directory-slug', validatedSlug);
+          response.headers.set('x-debug-mode', 'localhost-default');
+          
+          return response;
+        }
+      }
+      
+      return response;
+    }
+    
     // Default domain - serve the normal Next.js app
-    if (
-      hostname === 'localhost' || 
-      hostname === '127.0.0.1' || 
-      hostname === 'nowdirectories.com' || 
-      hostname.endsWith('.vercel.app')
-    ) {
+    if (hostname === 'nowdirectories.com' || hostname.endsWith('.vercel.app')) {
       return response;
     }
     

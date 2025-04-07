@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase';
-import env from '@/lib/env';
 import NotarySearchForm, { SearchFilters } from './NotarySearchForm';
 import { kmToMiles } from '@/utils/geocoding';
 
@@ -15,11 +14,15 @@ interface Coordinates {
   longitude: number;
 }
 
+interface NotaryListProps {
+  slug?: string;
+}
+
 /**
  * NotaryList component with geolocation-enhanced search
  * Displays a search form and notary results with filters
  */
-export default function NotaryList() {
+export default function NotaryList({ slug = 'notaryfindernow' }: NotaryListProps) {
   // State
   const [notaries, setNotaries] = useState<Notary[]>([]);
   const [filteredNotaries, setFilteredNotaries] = useState<Notary[]>([]);
@@ -28,21 +31,30 @@ export default function NotaryList() {
   const [error, setError] = useState<string | null>(null);
   const [uniqueServices, setUniqueServices] = useState<string[]>([]);
   
-  // Create the Supabase client
-  const supabase = createClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-  );
-
+  // Use a ref for the Supabase client to avoid recreating it on each render
+  const supabaseRef = useRef<SupabaseClient<Database> | null>(null);
+  
+  // Initialize the Supabase client on the client side only to prevent hydration errors
+  useEffect(() => {
+    if (!supabaseRef.current && typeof window !== 'undefined') {
+      supabaseRef.current = createClient<Database>(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+    }
+  }, []);
+  
   /**
    * Load all available service types for the filter dropdown
    */
   const loadAvailableServices = useCallback(async () => {
+    if (!supabaseRef.current) return;
+    
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseRef.current
         .from('notaries')
         .select('services')
-        .eq('directory_slug', 'notaryfindernow');
+        .eq('directory_slug', slug);
       
       if (error) {
         throw error;
@@ -52,16 +64,18 @@ export default function NotaryList() {
         // Extract all unique services from the array of services arrays
         const allServices = data
           .flatMap(notary => notary.services || [])
-          .filter(Boolean);
+          .filter(Boolean) as string[];
         
-        // Remove duplicates
-        const uniqueServicesList = [...new Set(allServices)];
+        // Remove duplicates using Array.filter for better compatibility
+        const uniqueServicesList = allServices.filter((service, index, self) => 
+          self.indexOf(service) === index
+        );
         setUniqueServices(uniqueServicesList);
       }
     } catch (err) {
       console.error('Error loading service types:', err);
     }
-  }, [supabase]);
+  }, [supabaseRef, slug]);
 
   useEffect(() => {
     // Load available service types on component mount
@@ -85,10 +99,10 @@ export default function NotaryList() {
       }
       
       // Start building the query
-      let query = supabase
+      let query = supabaseRef.current!
         .from('notaries')
         .select('*')
-        .eq('directory_slug', 'notaryfindernow');
+        .eq('directory_slug', slug);
       
       // Apply service type filter if selected
       if (filters.serviceType) {
@@ -117,8 +131,8 @@ export default function NotaryList() {
       const notariesWithDistance = data.map(notary => {
         const lat1 = coordinates.latitude;
         const lon1 = coordinates.longitude;
-        const lat2 = notary.latitude;
-        const lon2 = notary.longitude;
+        const lat2 = notary.latitude || 0; // Default to 0 if undefined
+        const lon2 = notary.longitude || 0; // Default to 0 if undefined
         
         // Calculate distance in KM, convert to miles for display
         const distanceKm = calculateDistance(lat1, lon1, lat2, lon2);

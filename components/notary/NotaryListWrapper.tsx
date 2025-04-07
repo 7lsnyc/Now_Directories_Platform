@@ -42,15 +42,19 @@ const NotaryListPlaceholder = () => (
   </div>
 );
 
+interface NotaryListWrapperProps {
+  slug?: string;
+}
+
 /**
  * NotaryListWrapper
  * Provides dynamic loading for the NotaryList component with geolocation features
  * Improves performance by only loading the component when needed
  */
-export default function NotaryListWrapper() {
+export default function NotaryListWrapper({ slug }: NotaryListWrapperProps) {
   return (
     <Suspense fallback={<NotaryListPlaceholder />}>
-      <NotaryList />
+      <NotaryList slug={slug} />
     </Suspense>
   );
 }

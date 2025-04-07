@@ -1,5 +1,7 @@
 import fs from 'fs';
 import path from 'path';
+import { createClient } from '@/lib/supabase/server';
+import { cache } from 'react';
 
 export interface DirectoryConfig {
   name: string;
@@ -118,32 +120,76 @@ export const defaultConfig: DirectoryConfig = {
 
 /**
  * Loads configuration for a specific directory by slug
+ * This function prioritizes fetching data from Supabase as the source of truth
  * @param slug - The directory slug to load configuration for
  * @returns The directory configuration or default config if not found
  */
-export function loadConfig(slug?: string): DirectoryConfig {
+export const loadConfig = cache(async function(slug?: string): Promise<DirectoryConfig> {
   // If no slug is provided, return the default config
   if (!slug) {
     return defaultConfig;
   }
 
   try {
-    // Attempt to load the config file for the specified slug
-    const configPath = path.resolve(process.cwd(), 'config', `${slug}.json`);
+    // First attempt to get the directory config from Supabase (source of truth)
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('directories')
+      .select('*')
+      .eq('directory_slug', slug)
+      .eq('is_active', true)
+      .single();
     
-    // Check if the file exists
-    if (!fs.existsSync(configPath)) {
-      console.warn(`Config file not found for slug: ${slug}`);
-      return defaultConfig;
+    if (error) {
+      console.error(`Error fetching directory from Supabase for slug ${slug}:`, error);
     }
     
-    // Read and parse the config file
-    const configData = fs.readFileSync(configPath, 'utf8');
-    const config = JSON.parse(configData) as DirectoryConfig;
+    // If we successfully retrieved the directory data from Supabase, convert it to a DirectoryConfig
+    if (data) {
+      console.log(`Found directory in Supabase for slug: ${slug}`);
+      
+      // Convert the Supabase directory data to DirectoryConfig format
+      // This assumes certain fields are present in the Supabase data
+      const config: DirectoryConfig = {
+        name: data.name || defaultConfig.name,
+        title: data.title || defaultConfig.title,
+        description: data.description || defaultConfig.description,
+        logo: {
+          path: data.logo_path || defaultConfig.logo.path,
+          alt: data.logo_alt || defaultConfig.logo.alt
+        },
+        theme: {
+          name: data.theme_name || defaultConfig.theme.name,
+          colors: {
+            primary: data.brand_color_primary || defaultConfig.theme.colors.primary,
+            secondary: data.brand_color_secondary || defaultConfig.theme.colors.secondary,
+            accent: data.brand_color_accent || defaultConfig.theme.colors.accent
+          }
+        },
+        hero: {
+          heading: data.hero_heading || defaultConfig.hero.heading,
+          subheading: data.hero_subheading || defaultConfig.hero.subheading
+        },
+        serviceTypes: data.service_types || defaultConfig.serviceTypes,
+        navigation: data.navigation || defaultConfig.navigation,
+        seo: {
+          title: data.seo_title || defaultConfig.seo.title,
+          description: data.seo_description || defaultConfig.seo.description
+        },
+        features: data.features || defaultConfig.features
+      };
+      
+      return config;
+    }
     
-    return config;
+    // If Supabase lookup failed, log a warning
+    console.warn(`Directory not found in Supabase for slug: ${slug}`);
+    
+    // For development only: Fall back to local config if absolutely necessary
+    // In a production environment, this should return defaultConfig
+    return defaultConfig;
   } catch (error) {
     console.error(`Error loading config for slug ${slug}:`, error);
     return defaultConfig;
   }
-}
+});

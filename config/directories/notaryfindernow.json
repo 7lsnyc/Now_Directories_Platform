@@ -1,0 +1,34 @@
+{
+  "slug": "notaryfindernow",
+  "name": "Notary Finder Now",
+  "title": "Find Trusted Notaries in Your Area | Notary Finder Now",
+  "description": "Easily find verified notaries near you with our location-based search. Filter by service type and ratings.",
+  "domain": "notaryfindernow.com",
+  "is_active": true,
+  "theme": {
+    "colors": {
+      "primary": "#1e40af",
+      "secondary": "#1e3a8a",
+      "accent": "#3b82f6"
+    }
+  },
+  "navigation": {
+    "header": {
+      "links": [
+        { "text": "Home", "url": "/" },
+        { "text": "Search", "url": "/search" }
+      ],
+      "ctaButton": {
+        "text": "Request Featured Listing",
+        "url": "/request-listing"
+      }
+    },
+    "footer": {
+      "quickLinks": [
+        { "text": "Home", "url": "/" },
+        { "text": "Search", "url": "/search" },
+        { "text": "About Us", "url": "/about" }
+      ]
+    }
+  }
+}
