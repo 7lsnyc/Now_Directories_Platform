@@ -43,9 +43,8 @@ const ENV = {
 // CRITICAL: More robust build detection that will be properly evaluated during Next.js static analysis
 // This uses multiple signals to detect a build environment
 const isVercelBuild = typeof process !== 'undefined' && (
-  // Primary signal: We're on Vercel production and missing expected variables
-  (process.env.VERCEL_ENV === 'production' && typeof process.env.NEXT_PUBLIC_SUPABASE_URL === 'undefined') ||
-  // Backup signal: We're in a Next.js build command
+  // Only check build signals, not runtime environment
+  // We should no longer check for missing variables in production as that could be true at runtime
   (process.env.npm_lifecycle_event === 'build') ||
   // Fallback: NEXT_PHASE is defined by Next.js during certain build operations
   (typeof process.env.NEXT_PHASE !== 'undefined' && 
