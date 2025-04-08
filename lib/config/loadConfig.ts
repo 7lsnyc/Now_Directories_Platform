@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { cache } from 'react';
 
 export interface DirectoryConfig {
@@ -132,7 +132,7 @@ export const loadConfig = cache(async function(slug?: string): Promise<Directory
 
   try {
     // First attempt to get the directory config from Supabase (source of truth)
-    const supabase = createClient();
+    const supabase = createServerClient();
     const { data, error } = await supabase
       .from('directories')
       .select('*')

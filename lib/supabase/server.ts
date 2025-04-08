@@ -1,35 +1,70 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { serverEnv } from '../env/server';
 
 /**
  * Creates a Supabase client for server-side usage, using
- * server-side environment variables. These are loaded from 
- * the Vercel project settings, not from client-side.
+ * server-side environment variables.
+ * 
+ * Type for all server component database operations
  */
-export function createClient() {
-  // In server components, we should use server-side environment variables directly
-  // This ensures they're loaded at build time and don't require client-side fetch
-  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+export type SupabaseServer = ReturnType<typeof createServerClient>;
+
+/**
+ * Creates a Supabase client for server components with full admin access
+ */
+export function createServerClient() {
+  const { url, serviceRoleKey } = serverEnv.supabase;
   
-  // Validate critical environment variables
-  if (!supabaseUrl) {
-    throw new Error('Missing SUPABASE_URL environment variable in server.ts');
+  // Validate environment variables
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      `Missing Supabase server environment variables. ` +
+      `Make sure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.`
+    );
   }
   
-  if (!supabaseServiceKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable in server.ts');
-  }
-  
-  // Create the Supabase client with the server-side environment variables
-  return createSupabaseClient(
-    supabaseUrl,
-    supabaseServiceKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      }
-    }
-  );
+  // Create server client with service role key
+  return createSupabaseClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,  // No session persistence on server
+      autoRefreshToken: false,
+    },
+  });
 }
+
+/**
+ * Creates a Supabase client for server components with user authentication
+ * from cookies (for protected routes)
+ */
+export function createServerClientWithAuth() {
+  const { url, serviceRoleKey } = serverEnv.supabase;
+  const cookieStore = cookies();
+  
+  // Validate environment variables
+  if (!url || !serviceRoleKey) {
+    throw new Error(
+      `Missing Supabase server environment variables. ` +
+      `Make sure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.`
+    );
+  }
+  
+  // Create server client with auth cookies
+  return createSupabaseClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    // Add cookie support separately without using the auth.cookies property
+    // Note: Since Next.js 13.4+ changed the cookie handling API, we need to
+    // access through headers directly instead of using the auth.cookies option
+    global: {
+      headers: {
+        cookie: cookieStore.toString(),
+      },
+    },
+  });
+}
+
+// For backward compatibility during migration
+export const createClient = createServerClient;
