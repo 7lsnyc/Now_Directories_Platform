@@ -1,49 +1,35 @@
-import { createServerClient } from '@supabase/ssr';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import { type CookieOptions } from '@supabase/ssr';
-import { environmentService } from '@/lib/services/EnvironmentService';
 
 /**
- * Creates a Supabase client for server components and pages
- * Properly initializes environment variables and uses server-side keys
+ * Creates a Supabase client for server-side usage, using
+ * server-side environment variables. These are loaded from 
+ * the Vercel project settings, not from client-side.
  */
 export function createClient() {
-  const cookieStore = cookies();
+  // In server components, we should use server-side environment variables directly
+  // This ensures they're loaded at build time and don't require client-side fetch
+  const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
-  // Initialize environment service to ensure variables are loaded
-  environmentService.initialize();
-  const env = environmentService.getValues();
-  
-  // Get URL from server-side variables (could be the same as client URL)
-  const supabaseUrl = env.supabase.url;
-  
-  // Use service role key for server operations (more privileged than anon key)
-  const supabaseKey = env.supabase.serviceRoleKey;
-  
-  // Validate critical environment variables before creating the client
+  // Validate critical environment variables
   if (!supabaseUrl) {
-    throw new Error('Missing SUPABASE_URL environment variable for server Supabase client');
+    throw new Error('Missing SUPABASE_URL environment variable in server.ts');
   }
   
-  if (!supabaseKey) {
-    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable for server Supabase client');
+  if (!supabaseServiceKey) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable in server.ts');
   }
-
-  return createServerClient(
+  
+  // Create the Supabase client with the server-side environment variables
+  return createSupabaseClient(
     supabaseUrl,
-    supabaseKey,
+    supabaseServiceKey,
     {
-      cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name: string, value: string, options: CookieOptions) {
-          cookieStore.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          cookieStore.set({ name, value: '', ...options });
-        },
-      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
     }
   );
 }

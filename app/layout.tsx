@@ -5,6 +5,7 @@ import ThemeProvider from '@/components/ThemeProvider';
 import { headers } from 'next/headers';
 import DirectoryDebug from '@/components/DirectoryDebug';
 import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper';
+import { SupabaseProvider } from '@/lib/supabase/provider';
 
 export const metadata: Metadata = {
   title: 'Now Directories Platform',
@@ -30,19 +31,21 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body>
-        <ThemeProvider 
-          directory={directorySlug}
-          themeColors={{
-            primary: config.theme?.colors?.primary || '#0f766e',
-            secondary: config.theme?.colors?.secondary || '#0369a1',
-            accent: config.theme?.colors?.accent || '#4f46e5'
-          }}
-        >
-          <ErrorBoundaryWrapper>
-            {children}
-            <DirectoryDebug />
-          </ErrorBoundaryWrapper>
-        </ThemeProvider>
+        <SupabaseProvider>
+          <ThemeProvider 
+            directory={directorySlug}
+            themeColors={{
+              primary: config.theme?.colors?.primary || '#0f766e',
+              secondary: config.theme?.colors?.secondary || '#0369a1',
+              accent: config.theme?.colors?.accent || '#4f46e5'
+            }}
+          >
+            <ErrorBoundaryWrapper>
+              {children}
+              <DirectoryDebug />
+            </ErrorBoundaryWrapper>
+          </ThemeProvider>
+        </SupabaseProvider>
       </body>
     </html>
   );
