@@ -175,9 +175,10 @@ const toNumber = (value: string): number => {
 export const env = isVercelBuild 
   ? {
       // Build-time placeholders that won't throw errors
-      NEXT_PUBLIC_SUPABASE_URL: `build-placeholder-next_public_supabase_url`,
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: `build-placeholder-next_public_supabase_anon_key`,
-      SUPABASE_SERVICE_ROLE_KEY: `build-placeholder-supabase_service_role_key`,
+      // IMPORTANT: Use valid URLs for placeholders to avoid URL constructor errors
+      NEXT_PUBLIC_SUPABASE_URL: 'https://placeholder-for-build.supabase.co',
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-for-build-key',
+      SUPABASE_SERVICE_ROLE_KEY: 'placeholder-for-build-service-key',
       
       NODE_ENV: 'production' as const,
       DEFAULT_DIRECTORY_SLUG: 'notaryfindernow',
