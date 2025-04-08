@@ -31,7 +31,7 @@ export default async function RootLayout({
     const { data: config, error } = await supabase
       .from('directories')
       .select('*')
-      .eq('slug', directorySlug) // Using 'slug' instead of 'directory_slug' based on Database type definition
+      .eq('directory_slug', directorySlug) // Using 'directory_slug' which is the actual column name in the database
       .eq('is_active', true)
       .maybeSingle();
     
