@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createServerClient } from '@/lib/supabase/server';
 import { Directory } from '@/types/directory';
 import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry';
 import { getTextColorForBackground } from '@/utils/accessibility';
@@ -88,7 +88,7 @@ function GenericDirectoryContent({ directory }: { directory: Directory }) {
  */
 async function getDirectoryData(slug: string): Promise<Directory | null> {
   console.log(`[DEBUG] Fetching directory data for slug: ${slug}`);
-  const supabase = createClient();
+  const supabase = createServerClient();
   
   try {
     const { data, error } = await supabase
