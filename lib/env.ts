@@ -38,6 +38,7 @@ export interface EnvironmentVariables {
 const ENV = {
   isProd: typeof process !== 'undefined' && process.env.NODE_ENV === 'production',
   isDev: typeof process !== 'undefined' && (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test'),
+  isBrowser: typeof window !== 'undefined',
 };
 
 // CRITICAL: More robust build detection that will be properly evaluated during Next.js static analysis
@@ -51,26 +52,57 @@ const isVercelBuild = typeof process !== 'undefined' && (
    ['phase-production-build', 'phase-export'].includes(process.env.NEXT_PHASE || ''))
 );
 
-// Client-side next/config access (won't throw errors unlike direct process.env access)
-const getClientEnv = () => {
-  // For client-side, try to get from next.config public runtime config
-  if (typeof window !== 'undefined') {
-    try {
-      // Access from window.__NEXT_DATA__.runtimeConfig if available
-      // This is more reliable than direct process.env access at runtime
-      // @ts-ignore - next.js adds this but TypeScript doesn't know about it
-      if (window.__NEXT_DATA__?.runtimeConfig) {
-        // @ts-ignore
-        return window.__NEXT_DATA__.runtimeConfig;
-      }
-    } catch (e) {
-      console.warn('Failed to access client-side runtime config', e);
-    }
-  }
+// Client-side environment access with robust fallbacks
+// Keep track of API fetch state to avoid multiple requests
+let clientEnvCache: Record<string, string> | null = null;
+let clientEnvPromise: Promise<Record<string, string>> | null = null;
+
+// Fetch environment variables from API if in browser
+const fetchClientEnv = async (): Promise<Record<string, string>> => {
+  // Use cached result if available
+  if (clientEnvCache) return clientEnvCache;
   
-  // Direct access fallback (process.env for server, empty for client if not in Next.js data)
-  return typeof process !== 'undefined' ? process.env : {};
+  // If a fetch is already in progress, return that promise
+  if (clientEnvPromise) return clientEnvPromise;
+  
+  // Start a new fetch
+  clientEnvPromise = new Promise(async (resolve) => {
+    try {
+      if (ENV.isBrowser) {
+        // In browser, fetch from our API endpoint
+        const response = await fetch('/api/env');
+        if (response.ok) {
+          const data = await response.json();
+          clientEnvCache = data;
+          resolve(data);
+          return;
+        } else {
+          console.error('Failed to fetch environment variables from API:', await response.text());
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching environment variables:', error);
+    }
+    
+    // Fallback to empty object or process.env
+    const fallback = typeof process !== 'undefined' ? process.env : {};
+    resolve(fallback as Record<string, string>);
+  });
+  
+  return clientEnvPromise;
 };
+
+// Initialize with synchronous values first, then update async if needed
+let envCache: Record<string, string> = typeof process !== 'undefined' ? 
+  (process.env as Record<string, string>) : {};
+
+// For browser environments, trigger fetch on module load
+// This won't block initialization but will update values ASAP
+if (ENV.isBrowser && !isVercelBuild) {
+  fetchClientEnv().then(values => {
+    envCache = { ...envCache, ...values };
+  });
+}
 
 // Validators (only used during initialization)
 const isValidUrl = (url: string): boolean => {
@@ -83,6 +115,15 @@ const isValidUrl = (url: string): boolean => {
   }
 };
 
+// Access environment variables with priority order:
+// 1. Local cache (updated async from API in browser)
+// 2. process.env (for server-side)
+// 3. Default values
+const getEnvVar = (key: string): string | undefined => {
+  return envCache[key] || 
+    (typeof process !== 'undefined' ? process.env[key] : undefined);
+};
+
 // Validate and prepare critical environment variables
 // This runs once at import time rather than on each access
 const getCriticalVar = (key: string, validator?: (val: string) => boolean): string => {
@@ -92,9 +133,8 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
     return `build-placeholder-${key.toLowerCase()}`;
   }
 
-  // Enhanced environment variable access strategy that works in all contexts
-  const clientEnv = getClientEnv();
-  const value = clientEnv[key] || process.env[key];
+  // Get value from our environment access strategy
+  const value = getEnvVar(key);
   
   if (!value) {
     if (ENV.isProd && !isVercelBuild) {
@@ -118,7 +158,7 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
 // Pre-compute non-critical values with defaults
 const getNonCriticalVar = <T>(key: string, defaultValue: T, transformer?: (val: string) => T): T => {
   if (isVercelBuild) return defaultValue; // Skip during build
-  const value = process.env[key];
+  const value = getEnvVar(key);
   if (value === undefined) return defaultValue;
   return transformer ? transformer(value) : value as unknown as T;
 };
@@ -135,11 +175,10 @@ const toNumber = (value: string): number => {
 export const env = isVercelBuild 
   ? {
       // Build-time placeholders that won't throw errors
-      NEXT_PUBLIC_SUPABASE_URL: 'https://placeholder-for-build.supabase.co',
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: 'placeholder-for-build-key',
-      SUPABASE_SERVICE_ROLE_KEY: 'placeholder-for-build-service-key',
+      NEXT_PUBLIC_SUPABASE_URL: `build-placeholder-next_public_supabase_url`,
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: `build-placeholder-next_public_supabase_anon_key`,
+      SUPABASE_SERVICE_ROLE_KEY: `build-placeholder-supabase_service_role_key`,
       
-      // Safe defaults for application config
       NODE_ENV: 'production' as const,
       DEFAULT_DIRECTORY_SLUG: 'notaryfindernow',
       
@@ -240,5 +279,22 @@ export const env = isVercelBuild
         };
       }
     };
+
+// For browser environments, update the env object with values from API
+// This won't block initial render but will update values ASAP
+if (ENV.isBrowser && !isVercelBuild) {
+  fetchClientEnv().then(values => {
+    // Only update public variables that are safe for client-side
+    if (values.NEXT_PUBLIC_SUPABASE_URL) {
+      (env as any).NEXT_PUBLIC_SUPABASE_URL = values.NEXT_PUBLIC_SUPABASE_URL;
+    }
+    if (values.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      (env as any).NEXT_PUBLIC_SUPABASE_ANON_KEY = values.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    }
+    if (values.DEFAULT_DIRECTORY_SLUG) {
+      (env as any).DEFAULT_DIRECTORY_SLUG = values.DEFAULT_DIRECTORY_SLUG;
+    }
+  });
+}
 
 export default env;
