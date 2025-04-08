@@ -124,13 +124,24 @@ const getEnvVar = (key: string): string | undefined => {
     (typeof process !== 'undefined' ? process.env[key] : undefined);
 };
 
+// Pre-compute non-critical values with defaults
+const getNonCriticalVar = <T>(key: string, defaultValue: T, transformer?: (val: string) => T): T => {
+  if (isVercelBuild) return defaultValue; // Skip during build
+  const value = getEnvVar(key);
+  if (value === undefined) return defaultValue;
+  return transformer ? transformer(value) : value as unknown as T;
+};
+
 // Validate and prepare critical environment variables
 // This runs once at import time rather than on each access
 const getCriticalVar = (key: string, validator?: (val: string) => boolean): string => {
   // CRITICAL: This check MUST be the very first thing we do
   // It prevents any validation code from running during build
   if (isVercelBuild) {
-    return `build-placeholder-${key.toLowerCase()}`;
+    // During build, use proper placeholder format that won't cause validation errors
+    return key === 'NEXT_PUBLIC_SUPABASE_URL' 
+      ? 'https://placeholder-for-build.supabase.co' 
+      : `placeholder-for-build-${key.toLowerCase()}`;
   }
 
   // Get value from our environment access strategy
@@ -141,7 +152,9 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
       throw new ConfigError(`Missing critical environment variable: ${key}`);
     }
     console.warn(`⚠️ Missing critical environment variable: ${key}. Using fallback for development only.`);
-    return `dev-placeholder-${key.toLowerCase()}`;
+    return key === 'NEXT_PUBLIC_SUPABASE_URL' 
+      ? 'https://placeholder-for-dev.supabase.co' 
+      : `dev-placeholder-${key.toLowerCase()}`;
   }
   
   if (validator && !validator(value)) {
@@ -149,18 +162,12 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
       throw new ConfigError(`Invalid value for environment variable: ${key}`);
     }
     console.warn(`⚠️ Invalid value for environment variable: ${key}. Using fallback for development only.`);
-    return `dev-placeholder-${key.toLowerCase()}`;
+    return key === 'NEXT_PUBLIC_SUPABASE_URL' 
+      ? 'https://placeholder-for-dev.supabase.co' 
+      : `dev-placeholder-${key.toLowerCase()}`;
   }
   
   return value;
-};
-
-// Pre-compute non-critical values with defaults
-const getNonCriticalVar = <T>(key: string, defaultValue: T, transformer?: (val: string) => T): T => {
-  if (isVercelBuild) return defaultValue; // Skip during build
-  const value = getEnvVar(key);
-  if (value === undefined) return defaultValue;
-  return transformer ? transformer(value) : value as unknown as T;
 };
 
 // Transform helpers
