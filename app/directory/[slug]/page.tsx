@@ -9,7 +9,6 @@ import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry'
 import { getTextColorForBackground } from '@/utils/accessibility';
 import { FaMapMarkerAlt, FaSearch, FaMobileAlt, FaClock, FaStar, FaCheckCircle } from 'react-icons/fa';
 import SearchComponentWrapper from '@/components/directory/SearchComponentWrapper';
-import { serverEnv } from '@/lib/env/server';
 
 // Generic skeleton component for loading state
 function DirectoryPageSkeleton() {
@@ -91,7 +90,6 @@ async function getDirectoryData(slug: string): Promise<Directory | null> {
   console.log(`[DEBUG] Fetching directory data for slug: ${slug}`);
   
   try {
-    // Create a server client instance directly
     const supabase = createServerClient();
     
     console.log('[DEBUG] Supabase client created, executing query');
@@ -116,7 +114,7 @@ async function getDirectoryData(slug: string): Promise<Directory | null> {
     console.log(`[DEBUG] Successfully retrieved directory data for: ${data.name}`);
     return data as Directory;
   } catch (error) {
-    console.error('[DEBUG] Exception in getDirectoryData:', error);
+    console.error(`[DEBUG] Failed to fetch directory from Supabase: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
