@@ -2,7 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ConfigError } from '@/lib/errors/ConfigError';
-import env from '@/lib/env';
+import { clientEnv } from '@/lib/env/client';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -52,7 +52,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
     
     // Don't report ConfigErrors in production as they're expected when config is missing
     // This prevents flooding error tracking with known configuration issues
-    if (env.NODE_ENV === 'production' && error instanceof ConfigError) {
+    if (clientEnv.NODE_ENV === 'production' && error instanceof ConfigError) {
       console.log('Configuration error detected, not reporting to error service');
     }
   }
@@ -111,7 +111,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                   </button>
                 </div>
               </div>
-              {env.NODE_ENV === 'development' && (
+              {clientEnv.NODE_ENV === 'development' && (
                 <div className="mt-4 p-4 border border-amber-200 rounded-md bg-amber-50">
                   <p className="text-sm font-medium text-amber-800 mb-1">Configuration Error:</p>
                   <p className="text-xs font-mono text-amber-600 overflow-auto max-h-40">
@@ -156,7 +156,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
                 </button>
               </div>
             </div>
-            {env.NODE_ENV === 'development' && (
+            {clientEnv.NODE_ENV === 'development' && (
               <div className="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50">
                 <p className="text-xs font-mono text-gray-600 overflow-auto max-h-40">
                   {this.state.error?.toString()}

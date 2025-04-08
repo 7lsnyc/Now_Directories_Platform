@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { environmentService } from '@/lib/services/EnvironmentService';
+import { serverEnv } from '@/lib/env/server';
 
 /**
  * Helper function to set directory_slug in JWT claims during auth
@@ -10,19 +10,15 @@ export async function setDirectorySlugInToken(
   directorySlug: string
 ) {
   try {
-    // Initialize environment service
-    environmentService.initialize();
-    const envValues = environmentService.getValues();
-    
     // Validate required environment variables
-    if (!envValues.supabase.url || !envValues.supabase.serviceRoleKey) {
+    if (!serverEnv.supabase.url || !serverEnv.supabase.serviceRoleKey) {
       throw new Error('Missing required Supabase environment variables');
     }
     
     // Initialize Supabase client with admin key
     const supabase = createClient(
-      envValues.supabase.url, 
-      envValues.supabase.serviceRoleKey
+      serverEnv.supabase.url, 
+      serverEnv.supabase.serviceRoleKey
     );
 
     // Make an API call to a custom Supabase Edge Function 
@@ -49,12 +45,12 @@ export async function setDirectorySlugInToken(
 /*
 import { NextApiRequest, NextApiResponse } from 'next';
 import { setDirectorySlugInToken } from '@/lib/auth/setDirectorySlug';
-import { environmentService } from '@/lib/services/EnvironmentService';
+import { serverEnv } from '@/lib/env/server';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // Get the host and map it to a directory slug
   const host = req.headers.host || '';
-  const directorySlug = domainMap[host] || environmentService.getValues().DEFAULT_DIRECTORY_SLUG;
+  const directorySlug = domainMap[host] || serverEnv.defaultDirectorySlug;
   
   // Get the token from auth provider callback
   const { token } = req.query;

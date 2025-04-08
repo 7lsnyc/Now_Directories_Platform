@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/middleware';
 import { addSecurityHeaders, applyCorsPolicies, validateInput } from '@/lib/security/securityMiddleware';
-import { environmentService } from '@/lib/services/EnvironmentService';
+import { serverEnv } from '@/lib/env/server';
 
 /**
  * Directory information retrieved from Supabase
@@ -72,15 +72,6 @@ export async function middleware(request: NextRequest) {
   }
   
   try {
-    // Initialize environment service
-    try {
-      environmentService.initialize();
-    } catch (envError) {
-      console.error('[Middleware] Environment initialization failed:', 
-        envError instanceof Error ? envError.message : 'Unknown error');
-      return NextResponse.rewrite(new URL('/error', request.url));
-    }
-    
     // Create initial response to add security headers regardless of outcome
     let response = NextResponse.next();
     response = addSecurityHeaders(response);
@@ -332,7 +323,7 @@ export async function middleware(request: NextRequest) {
     }
     
     // Directory not found - try to use the default directory slug from environment
-    const defaultSlug = environmentService.getValues().defaults.directorySlug;
+    const defaultSlug = serverEnv.defaultDirectorySlug;
     if (defaultSlug) {
       console.log(`[Middleware] Using default directory slug: ${defaultSlug}`);
       const defaultResponse = NextResponse.rewrite(

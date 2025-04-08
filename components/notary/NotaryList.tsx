@@ -6,7 +6,7 @@ import type { Database } from '@/lib/supabase';
 import NotarySearchForm, { SearchFilters } from './NotarySearchForm';
 import { kmToMiles } from '@/utils/geocoding';
 import { Directory, DirectoryThemeColors } from '@/types/directory';
-import { useSupabase } from '@/lib/hooks/useSupabase';
+import { useSupabase } from '@/lib/supabase/clientProvider';
 
 // Types
 type Notary = Database['public']['Tables']['notaries']['Row'];
@@ -44,8 +44,8 @@ export default function NotaryList({
     maxDistance: 20 
   });
   
-  // Use the new useSupabase hook instead of creating our own client
-  const { supabase, loading: supabaseLoading, error: supabaseError } = useSupabase();
+  // Use the Supabase hook from the new provider
+  const { supabase, isLoading: supabaseLoading } = useSupabase();
   
   // Check for notary data availability
   useEffect(() => {
@@ -229,30 +229,31 @@ export default function NotaryList({
   // Primary color for UI elements
   const primaryColor = themeColors?.primary || '#6366F1';
 
-  // Show Supabase connection errors if they occur
-  if (supabaseError) {
-    return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-md text-red-700">
-        <h3 className="font-bold text-lg">Connection Error</h3>
-        <p>There was a problem connecting to our database. Please try refreshing the page.</p>
-        <p className="text-sm mt-2">Technical details: {supabaseError.message}</p>
-      </div>
-    );
-  }
-
   // Show loading state while Supabase initializes
   if (supabaseLoading) {
     return (
       <div className="p-6 text-center">
         <div 
           className="inline-block animate-spin h-8 w-8 border-4 rounded-full" 
-          style={{ borderColor: `${primaryColor} transparent transparent transparent` }}
+          style={{ 
+            borderColor: `${primaryColor} transparent transparent transparent` 
+          }}
         ></div>
-        <p className="mt-2">Initializing application...</p>
+        <p className="mt-2">Loading notary search...</p>
       </div>
     );
   }
-  
+
+  // Show error if Supabase client is not available
+  if (!supabase) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-md text-red-700">
+        <h3 className="font-bold text-lg">Connection Error</h3>
+        <p>There was a problem connecting to our database. Please try refreshing the page.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Search Form */}

@@ -6,6 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { isBuildTime, buildSafeEnvironment } from './build-safe';
+import { serverEnv } from '@/lib/env/server';
+import { validateServerEnv } from '@/lib/env/server';
 
 /**
  * GET handler for environment variable diagnostics
@@ -24,10 +26,6 @@ export async function GET(request: NextRequest) {
 
   // Below here only runs in development
   try {
-    // Dynamically import the environment service to prevent it from being
-    // evaluated at build time by Next.js
-    const { environmentService } = await import('@/lib/services/EnvironmentService');
-
     const apiKey = request.headers.get('x-api-key');
     const diagnosticKey = process.env.DIAGNOSTIC_API_KEY || 'dev_diagnostic_key_123';
     
@@ -35,15 +33,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    try {
-      environmentService.initialize();
-    } catch (initError) {
-      console.warn('Environment service initialization failed:', initError);
-      
+    // Validate server environment
+    const envValidation = validateServerEnv();
+    
+    if (!envValidation.isValid) {
       return NextResponse.json({
         status: 'error',
         initialized: false,
-        error: initError instanceof Error ? initError.message : 'Unknown initialization error',
+        error: `Missing required environment variables: ${envValidation.missingVars.join(', ')}`,
         nodeEnv: process.env.NODE_ENV || 'unknown',
       });
     }
@@ -51,13 +48,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       status: 'ok',
       initialized: true,
-      hasErrors: environmentService.hasErrors?.() || false,
-      errors: environmentService.getErrors?.() || [],
+      hasErrors: !envValidation.isValid,
+      errors: envValidation.missingVars,
       nodeEnv: process.env.NODE_ENV || 'unknown',
-      supabaseConfigured: !environmentService.hasErrors?.() || false,
-      directorySlug: environmentService.getValues?.()?.defaults?.directorySlug || 'notaryfindernow',
-      analyticsEnabled: environmentService.getValues?.()?.analytics?.enabled || false,
-      debugMode: environmentService.getValues?.()?.debug || false
+      supabaseConfigured: envValidation.isValid,
+      directorySlug: serverEnv.defaultDirectorySlug || 'notaryfindernow',
+      analyticsEnabled: serverEnv.enableAnalytics || false,
+      debugMode: serverEnv.debugMode || false
     });
   } catch (error) {
     return NextResponse.json({

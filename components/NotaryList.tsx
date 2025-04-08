@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { Database } from '../lib/supabase';
-import { useSupabase } from '@/lib/hooks/useSupabase';
+import { useSupabase } from '@/lib/supabase/clientProvider';
 
 type Notary = Database['public']['Tables']['notaries']['Row'];
 
@@ -11,8 +11,8 @@ export default function NotaryList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Use the safe Supabase hook instead of direct initialization
-  const { supabase, loading: supabaseLoading, error: supabaseError } = useSupabase();
+  // Use the Supabase hook from the clientProvider
+  const { supabase, isLoading: supabaseLoading } = useSupabase();
 
   useEffect(() => {
     // Only proceed when Supabase client is available
@@ -49,10 +49,10 @@ export default function NotaryList() {
   }, [supabase, supabaseLoading]); // Add dependencies for the Supabase client
 
   // Handle Supabase initialization errors
-  if (supabaseError) {
+  if (!supabase && !supabaseLoading) {
     return (
       <div className="p-4 text-red-500">
-        Error connecting to database: {supabaseError.message}
+        Error connecting to database. Please refresh the page or try again later.
       </div>
     );
   }
