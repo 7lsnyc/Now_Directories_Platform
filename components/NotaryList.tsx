@@ -1,9 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import type { Database } from '../lib/supabase';
-import env from '@/lib/env';
+import { useSupabase } from '@/lib/hooks/useSupabase';
 
 type Notary = Database['public']['Tables']['notaries']['Row'];
 
@@ -11,17 +10,22 @@ export default function NotaryList() {
   const [notaries, setNotaries] = useState<Notary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Use the safe Supabase hook instead of direct initialization
+  const { supabase, loading: supabaseLoading, error: supabaseError } = useSupabase();
 
   useEffect(() => {
+    // Only proceed when Supabase client is available
+    if (!supabase || supabaseLoading) return;
+    
     async function fetchNotaries() {
       try {
         setLoading(true);
         
-        // Create supabase client using our environment utility
-        const supabase = createClient<Database>(
-          env.NEXT_PUBLIC_SUPABASE_URL,
-          env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        );
+        // TypeScript safety - recheck supabase is not null
+        if (!supabase) {
+          throw new Error('Supabase client not available');
+        }
         
         const { data, error } = await supabase
           .from('notaries')
@@ -42,9 +46,19 @@ export default function NotaryList() {
     }
 
     fetchNotaries();
-  }, []);
+  }, [supabase, supabaseLoading]); // Add dependencies for the Supabase client
 
-  if (loading) {
+  // Handle Supabase initialization errors
+  if (supabaseError) {
+    return (
+      <div className="p-4 text-red-500">
+        Error connecting to database: {supabaseError.message}
+      </div>
+    );
+  }
+
+  // Show loading while Supabase initializes or while fetching data
+  if (supabaseLoading || loading) {
     return <div className="p-4">Loading notaries...</div>;
   }
 

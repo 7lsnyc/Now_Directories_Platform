@@ -1,13 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { domainMap } from '@/middleware';
-import env from '@/lib/env';
+import { environmentService } from '@/lib/services/EnvironmentService';
 
 /**
  * Gets the Supabase client for server components
  * This includes the directory_slug claim in the JWT based on the current host
  */
 export const getSupabaseServerClient = async () => {
+  // Initialize environment service to ensure environment variables are loaded
+  environmentService.initialize();
+  const envValues = environmentService.getValues();
+  
+  if (!envValues.supabase.url || !envValues.supabase.anonKey) {
+    throw new Error('Missing required Supabase environment variables');
+  }
+  
   // Get cookie store
   const cookieStore = cookies();
   
@@ -16,13 +24,13 @@ export const getSupabaseServerClient = async () => {
   const host = cookieStore.get('x-host')?.value || '';
   
   // Determine directory slug from host
-  const directorySlug = domainMap.get(host) || env.DEFAULT_DIRECTORY_SLUG;
+  const directorySlug = domainMap.get(host) || envValues.defaults.directorySlug;
   
   // Create Supabase client with custom fetch handler that adds JWT claims
   // This approach adds the directory_slug to the token used for all Supabase requests
   return createClient(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    envValues.supabase.url,
+    envValues.supabase.anonKey,
     {
       auth: {
         persistSession: false,

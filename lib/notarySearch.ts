@@ -2,9 +2,9 @@
  * Notary search utilities for server-side spatial queries
  * Provides optimized location-based search with PostGIS
  */
-import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase';
 import { SearchFilters } from '@/components/notary/NotarySearchForm';
+import { getSupabaseClient } from '@/lib/supabase/getClient';
 
 // Type for search parameters
 export interface NotarySearchParams {
@@ -32,16 +32,12 @@ export interface NotarySearchResult {
  * This uses the Supabase client but filters results in-memory
  */
 export async function searchNotariesClientSide(params: NotarySearchParams): Promise<NotarySearchResult> {
-  // Validate required environment variables
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  // Get Supabase client from our utility
+  const supabase = await getSupabaseClient();
   
-  if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables');
+  if (!supabase) {
+    throw new Error('Unable to initialize Supabase client. Check environment variables.');
   }
-  
-  // Create Supabase client
-  const supabase = createClient<Database>(supabaseUrl, supabaseKey);
   
   // Fetch all notaries for the directory
   const { data, error } = await supabase
@@ -136,17 +132,13 @@ function degreesToRadians(degrees: number): number {
  */
 export async function searchNotariesWithPostGIS(params: NotarySearchParams): Promise<NotarySearchResult> {
   try {
-    // Validate required environment variables
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Get Supabase client from our utility
+    const supabase = await getSupabaseClient();
     
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('Missing Supabase environment variables');
+    if (!supabase) {
+      console.error('Unable to initialize Supabase client');
       return searchNotariesClientSide(params);
     }
-    
-    // Create Supabase client
-    const supabase = createClient<Database>(supabaseUrl, supabaseKey);
     
     // Convert miles to meters for PostGIS (1 mile = 1609.34 meters)
     const radiusMeters = params.radiusMiles * 1609.34;

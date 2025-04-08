@@ -2,21 +2,19 @@
  * Directory configuration helper
  * 
  * Provides utilities for working with directory configurations
- * in both development and production environments.
+ * in a consistent and reliable way across environments.
  */
 
 import { createClient } from './supabase/server';
 import { Directory } from '@/types/directory';
-import path from 'path';
-import fs from 'fs';
 
 /**
- * Get directory configuration from either Supabase database
- * or local file system during development
+ * Get directory configuration from Supabase database
+ * Uses server-side Supabase client for SSR compatibility
  */
 export async function getDirectoryConfig(slug: string): Promise<Directory | null> {
   try {
-    // Try to get directory from Supabase first
+    // Get directory from Supabase using server client
     const supabase = createClient();
     
     const { data, error } = await supabase
@@ -26,33 +24,22 @@ export async function getDirectoryConfig(slug: string): Promise<Directory | null
       .eq('is_active', true)
       .single();
     
-    if (data && !error) {
-      console.log('Found directory in database:', slug);
-      return data as Directory;
-    }
-    
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching directory config from Supabase:', error.message);
-    }
-    
-    // Fall back to local config file during development
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        const configPath = path.join(process.cwd(), 'config', 'directories', `${slug}.json`);
-        if (fs.existsSync(configPath)) {
-          const configData = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-          console.log('Using local config file for directory:', slug);
-          return configData as Directory;
-        }
-      } catch (fsError) {
-        console.error('Error reading local config file:', fsError);
+    if (error) {
+      if (error.code === 'PGRST116') {
+        // Record not found
+        console.warn(`Directory not found for slug: ${slug}`);
+        return null;
       }
+      
+      console.error('Error fetching directory config from Supabase:', error.message);
+      throw error;
     }
     
-    console.warn('Config file not found for slug:', slug);
-    return null;
+    console.log('Found directory in database:', slug);
+    return data as Directory;
   } catch (error) {
-    console.error('Error in getDirectoryConfig:', error);
-    return null;
+    console.error('Error in getDirectoryConfig:', 
+      error instanceof Error ? error.message : 'Unknown error');
+    throw error;
   }
 }
