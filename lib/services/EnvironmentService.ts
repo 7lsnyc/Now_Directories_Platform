@@ -1,4 +1,4 @@
-import { env as baseEnv } from '../env';
+import { env as baseEnv, fetchClientEnv } from '../env';
 
 /**
  * A more robust environment service that ensures variables are properly loaded
@@ -7,6 +7,8 @@ import { env as baseEnv } from '../env';
 class EnvironmentService {
   private static instance: EnvironmentService;
   private isInitialized = false;
+  private isClientSide = false;
+  private isClientLoading = false;
   private validationErrors: string[] = [];
   
   // Server-validated environment values
@@ -30,7 +32,8 @@ class EnvironmentService {
   private isBuilding = process.env.VERCEL_ENV === 'production' && process.env.NEXT_PUBLIC_SUPABASE_URL === undefined;
   
   private constructor() {
-    // Private constructor for singleton
+    // Check if we're in a browser environment
+    this.isClientSide = typeof window !== 'undefined';
   }
   
   public static getInstance(): EnvironmentService {
@@ -45,19 +48,36 @@ class EnvironmentService {
    * This should be called early in the app lifecycle
    */
   public initialize() {
-    if (this.isInitialized) return;
+    // Don't re-initialize if already done, unless it's a client-side 
+    // initialization that hasn't completed async loading yet
+    if (this.isInitialized && !(this.isClientSide && this.isClientLoading)) {
+      return;
+    }
     
     try {
       // Skip detailed validation during build
       if (this.isBuilding) {
-        this.values.supabase.url = 'https://placeholder-during-build.supabase.co';
-        this.values.supabase.anonKey = 'placeholder-during-build';
-        this.values.supabase.serviceRoleKey = 'placeholder-during-build';
-        this.values.defaults.directorySlug = 'notaryfindernow';
+        this.setPlaceholderValues('build');
         this.isInitialized = true;
         return;
       }
 
+      // For client-side, we need to handle async loading differently
+      if (this.isClientSide) {
+        // First initialization - use safe temporary values and trigger async load
+        if (!this.isClientLoading) {
+          // Set temporary values that won't cause errors during initial render
+          this.setPlaceholderValues('client');
+          this.isClientLoading = true;
+          this.isInitialized = true;
+          
+          // Asynchronously fetch and update the real values
+          this.loadClientEnvironment();
+          return;
+        }
+      }
+
+      // Server-side initialization with full validation
       // Load and validate critical Supabase variables
       this.values.supabase.url = this.validateUrl(baseEnv.NEXT_PUBLIC_SUPABASE_URL);
       this.values.supabase.anonKey = this.validateApiKey(baseEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY);
@@ -70,6 +90,7 @@ class EnvironmentService {
       this.values.debug = baseEnv.DEBUG_MODE || false;
       
       this.isInitialized = true;
+      this.isClientLoading = false;
       
       if (this.values.debug) {
         console.log('Environment service initialized successfully');
@@ -77,8 +98,66 @@ class EnvironmentService {
     } catch (error) {
       this.validationErrors.push(error instanceof Error ? error.message : 'Unknown validation error');
       console.error('Failed to initialize environment service:', error);
+      
+      // Even if validation fails on client-side, don't throw to avoid breaking the UI
+      // Just use placeholder values
+      if (this.isClientSide) {
+        this.setPlaceholderValues('client-fallback');
+        this.isInitialized = true;
+        return;
+      }
+      
       throw error;
     }
+  }
+  
+  /**
+   * Asynchronously load client-side environment variables
+   * and update the service values when they're available
+   */
+  private async loadClientEnvironment() {
+    try {
+      // Fetch environment variables from API
+      const clientEnv = await fetchClientEnv();
+      
+      // Update values with real environment variables
+      if (clientEnv.NEXT_PUBLIC_SUPABASE_URL) {
+        this.values.supabase.url = clientEnv.NEXT_PUBLIC_SUPABASE_URL;
+      }
+      
+      if (clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+        this.values.supabase.anonKey = clientEnv.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      }
+      
+      // Update non-critical values too
+      if (clientEnv.DEFAULT_DIRECTORY_SLUG) {
+        this.values.defaults.directorySlug = clientEnv.DEFAULT_DIRECTORY_SLUG;
+      }
+      
+      // Mark loading as complete
+      this.isClientLoading = false;
+      
+      if (this.values.debug) {
+        console.log('Client environment variables loaded successfully');
+      }
+    } catch (error) {
+      console.error('Failed to load client environment variables:', error);
+      this.isClientLoading = false;
+    }
+  }
+  
+  /**
+   * Set appropriate placeholder values based on context
+   */
+  private setPlaceholderValues(context: 'build' | 'client' | 'client-fallback') {
+    // Use different placeholders for different contexts for easier debugging
+    const contextPrefix = context === 'build' ? 'build-placeholder' : 
+                          context === 'client' ? 'client-placeholder' : 'fallback-placeholder';
+    
+    this.values.supabase.url = `https://${contextPrefix}.supabase.co`;
+    this.values.supabase.anonKey = `${contextPrefix}-anon-key`;
+    this.values.supabase.serviceRoleKey = `${contextPrefix}-service-key`;
+    this.values.defaults.directorySlug = 'notaryfindernow';
   }
   
   /**
@@ -95,8 +174,8 @@ class EnvironmentService {
    * Check if there were any errors during initialization
    */
   public hasErrors(): boolean {
-    // During build, pretend there are no errors
-    if (this.isBuilding) return false;
+    // During build or client-side, pretend there are no errors
+    if (this.isBuilding || this.isClientSide) return false;
     return this.validationErrors.length > 0;
   }
   
@@ -104,8 +183,8 @@ class EnvironmentService {
    * Get any validation errors that occurred
    */
   public getErrors(): string[] {
-    // During build, return empty errors
-    if (this.isBuilding) return [];
+    // During build or client-side, return empty errors
+    if (this.isBuilding || this.isClientSide) return [];
     return [...this.validationErrors];
   }
   
@@ -114,9 +193,16 @@ class EnvironmentService {
    * Useful when environment might have changed during runtime
    */
   public refresh(): void {
-    this.isInitialized = false;
-    this.validationErrors = [];
-    this.initialize();
+    if (this.isClientSide) {
+      // For client-side, just trigger async loading again
+      this.isClientLoading = true;
+      this.loadClientEnvironment();
+    } else {
+      // For server-side, reinitialize synchronously
+      this.isInitialized = false;
+      this.validationErrors = [];
+      this.initialize();
+    }
   }
   
   // Validation helpers
