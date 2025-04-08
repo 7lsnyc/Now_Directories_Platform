@@ -9,6 +9,7 @@ import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry'
 import { getTextColorForBackground } from '@/utils/accessibility';
 import { FaMapMarkerAlt, FaSearch, FaMobileAlt, FaClock, FaStar, FaCheckCircle } from 'react-icons/fa';
 import SearchComponentWrapper from '@/components/directory/SearchComponentWrapper';
+import { serverEnv } from '@/lib/env/server';
 
 // Generic skeleton component for loading state
 function DirectoryPageSkeleton() {
@@ -88,9 +89,16 @@ function GenericDirectoryContent({ directory }: { directory: Directory }) {
  */
 async function getDirectoryData(slug: string): Promise<Directory | null> {
   console.log(`[DEBUG] Fetching directory data for slug: ${slug}`);
-  const supabase = createServerClient();
-  
   try {
+    // Log environment variable status (for debugging only)
+    console.log(`[DEBUG] Supabase URL available: ${!!serverEnv.supabase.url}`);
+    console.log(`[DEBUG] Supabase service role key available: ${!!serverEnv.supabase.serviceRoleKey}`);
+    
+    // Create a new server client instance with proper error handling
+    const supabase = createServerClient();
+    
+    console.log('[DEBUG] Supabase client created successfully');
+    
     const { data, error } = await supabase
       .from('directories')
       .select('*')
