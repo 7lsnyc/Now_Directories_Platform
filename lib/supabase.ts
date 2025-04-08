@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import env from './env';
 
 // Define the Database type to match the project's structure
 export type Database = {
@@ -262,21 +261,28 @@ export type Database = {
 };
 
 /**
- * IMPORTANT: Supabase client initialization has been moved to a React hook
+ * IMPORTANT: Supabase client initialization has been moved to React providers
  * 
- * To use Supabase in components, import the useSupabase hook:
+ * To use Supabase in client components, import the useSupabase hook:
  * ```
- * import { useSupabase } from '@/lib/hooks/useSupabase';
+ * import { useSupabase } from '@/lib/supabase/clientProvider';
  * 
  * function MyComponent() {
- *   const { supabase, loading, error } = useSupabase();
+ *   const { supabase, isLoading } = useSupabase();
  *   
- *   if (loading) return <div>Loading Supabase client...</div>;
- *   if (error) return <div>Error initializing Supabase: {error.message}</div>;
- *   if (!supabase) return null;
+ *   if (isLoading) return <div>Loading Supabase client...</div>;
+ *   if (!supabase) return <div>Error initializing Supabase client</div>;
  *   
  *   // Use supabase here...
  * }
+ * ```
+ * 
+ * For server components, use createServerClient:
+ * ```
+ * import { createServerClient } from '@/lib/supabase/server';
+ * 
+ * const supabase = createServerClient();
+ * // Use supabase here...
  * ```
  * 
  * This approach guarantees that Supabase is only initialized after
@@ -289,8 +295,8 @@ let supabaseProxy: any = new Proxy({}, {
   get(target, prop) {
     console.warn(
       '⚠️ Direct import of supabase client is deprecated and may cause environment variable errors. ' +
-      'Please use the useSupabase() hook instead. ' +
-      'See lib/hooks/useSupabase.tsx for details.'
+      'Please use the useSupabase() hook from @/lib/supabase/clientProvider for client components, ' +
+      'or createServerClient() from @/lib/supabase/server for server components.'
     );
     return undefined;
   }
