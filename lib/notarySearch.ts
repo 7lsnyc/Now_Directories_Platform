@@ -4,7 +4,7 @@
  */
 import type { Database } from '@/lib/supabase';
 import { SearchFilters } from '@/components/notary/NotarySearchForm';
-import { getSupabaseClient } from '@/lib/supabase/getClient';
+import { createServerClient } from '@/lib/supabase/server';
 
 // Type for search parameters
 export interface NotarySearchParams {
@@ -33,20 +33,92 @@ export interface NotarySearchResult {
  */
 export async function searchNotariesClientSide(params: NotarySearchParams): Promise<NotarySearchResult> {
   // Get Supabase client from our utility
-  const supabase = await getSupabaseClient();
+  const supabase = createServerClient();
   
-  if (!supabase) {
-    throw new Error('Unable to initialize Supabase client. Check environment variables.');
-  }
-  
-  // Fetch all notaries for the directory
-  const { data, error } = await supabase
-    .from('notaries')
-    .select('*')
-    .eq('directory_slug', params.directorySlug);
-  
-  if (error) {
-    console.error('Error fetching notaries:', error);
+  try {
+    // Fetch all notaries for the directory
+    const { data, error } = await supabase
+      .from('notaries')
+      .select('*')
+      .eq('directory_slug', params.directorySlug);
+    
+    if (error) {
+      console.error('Error fetching notaries:', error);
+      return {
+        notaries: [],
+        totalCount: 0,
+        page: params.page || 0,
+        totalPages: 0,
+        radiusMiles: params.radiusMiles
+      };
+    }
+    
+    // Filter and sort results client-side
+    let filteredData = data || [];
+    
+    // Apply filters
+    if (params.serviceType) {
+      filteredData = filteredData.filter(notary => 
+        notary.services && notary.services.includes(params.serviceType || '')
+      );
+    }
+    
+    if (params.minimumRating && typeof params.minimumRating === 'number') {
+      filteredData = filteredData.filter(notary => 
+        notary.rating >= params.minimumRating!
+      );
+    }
+    
+    // Calculate distance and filter by radius if coordinates are provided
+    if (params.latitude && params.longitude) {
+      filteredData = filteredData.filter(notary => {
+        if (!notary.latitude || !notary.longitude) return false;
+        
+        // Calculate distance using Haversine formula
+        const earthRadiusKm = 6371;
+        const dLat = degreesToRadians(notary.latitude - params.latitude);
+        const dLon = degreesToRadians(notary.longitude - params.longitude);
+        
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(degreesToRadians(params.latitude)) * Math.cos(degreesToRadians(notary.latitude)) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distanceKm = earthRadiusKm * c;
+        const distanceMiles = distanceKm * 0.621371;
+        
+        // Store distance for sorting
+        (notary as any).distance = distanceMiles;
+        
+        return distanceMiles <= params.radiusMiles;
+      });
+      
+      // Sort by distance
+      filteredData.sort((a, b) => (a as any).distance - (b as any).distance);
+    } else {
+      // Sort by rating
+      filteredData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+    
+    // Apply pagination
+    const page = params.page || 0;
+    const pageSize = params.pageSize || 10;
+    const startIndex = page * pageSize;
+    const totalCount = filteredData.length;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    
+    const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
+    
+    return {
+      notaries: paginatedData,
+      totalCount,
+      page,
+      totalPages,
+      radiusMiles: params.radiusMiles
+    };
+  } catch (error) {
+    console.error('Error in client-side notary search:', error);
     return {
       notaries: [],
       totalCount: 0,
@@ -55,71 +127,6 @@ export async function searchNotariesClientSide(params: NotarySearchParams): Prom
       radiusMiles: params.radiusMiles
     };
   }
-  
-  // Filter and sort results client-side
-  let filteredData = data || [];
-  
-  // Apply filters
-  if (params.serviceType) {
-    filteredData = filteredData.filter(notary => 
-      notary.services && notary.services.includes(params.serviceType || '')
-    );
-  }
-  
-  if (params.minimumRating && typeof params.minimumRating === 'number') {
-    filteredData = filteredData.filter(notary => 
-      notary.rating >= params.minimumRating!
-    );
-  }
-  
-  // Calculate distance and filter by radius if coordinates are provided
-  if (params.latitude && params.longitude) {
-    filteredData = filteredData.filter(notary => {
-      if (!notary.latitude || !notary.longitude) return false;
-      
-      // Calculate distance using Haversine formula
-      const earthRadiusKm = 6371;
-      const dLat = degreesToRadians(notary.latitude - params.latitude);
-      const dLon = degreesToRadians(notary.longitude - params.longitude);
-      
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(degreesToRadians(params.latitude)) * Math.cos(degreesToRadians(notary.latitude)) * 
-        Math.sin(dLon/2) * Math.sin(dLon/2);
-      
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distanceKm = earthRadiusKm * c;
-      const distanceMiles = distanceKm * 0.621371;
-      
-      // Store distance for sorting
-      (notary as any).distance = distanceMiles;
-      
-      return distanceMiles <= params.radiusMiles;
-    });
-    
-    // Sort by distance
-    filteredData.sort((a, b) => (a as any).distance - (b as any).distance);
-  } else {
-    // Sort by rating
-    filteredData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-  }
-  
-  // Apply pagination
-  const page = params.page || 0;
-  const pageSize = params.pageSize || 10;
-  const startIndex = page * pageSize;
-  const totalCount = filteredData.length;
-  const totalPages = Math.ceil(totalCount / pageSize);
-  
-  const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
-  
-  return {
-    notaries: paginatedData,
-    totalCount,
-    page,
-    totalPages,
-    radiusMiles: params.radiusMiles
-  };
 }
 
 function degreesToRadians(degrees: number): number {
@@ -133,12 +140,7 @@ function degreesToRadians(degrees: number): number {
 export async function searchNotariesWithPostGIS(params: NotarySearchParams): Promise<NotarySearchResult> {
   try {
     // Get Supabase client from our utility
-    const supabase = await getSupabaseClient();
-    
-    if (!supabase) {
-      console.error('Unable to initialize Supabase client');
-      return searchNotariesClientSide(params);
-    }
+    const supabase = createServerClient();
     
     // Convert miles to meters for PostGIS (1 mile = 1609.34 meters)
     const radiusMeters = params.radiusMiles * 1609.34;
