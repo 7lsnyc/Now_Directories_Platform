@@ -51,6 +51,27 @@ const isVercelBuild = typeof process !== 'undefined' && (
    ['phase-production-build', 'phase-export'].includes(process.env.NEXT_PHASE || ''))
 );
 
+// Client-side next/config access (won't throw errors unlike direct process.env access)
+const getClientEnv = () => {
+  // For client-side, try to get from next.config public runtime config
+  if (typeof window !== 'undefined') {
+    try {
+      // Access from window.__NEXT_DATA__.runtimeConfig if available
+      // This is more reliable than direct process.env access at runtime
+      // @ts-ignore - next.js adds this but TypeScript doesn't know about it
+      if (window.__NEXT_DATA__?.runtimeConfig) {
+        // @ts-ignore
+        return window.__NEXT_DATA__.runtimeConfig;
+      }
+    } catch (e) {
+      console.warn('Failed to access client-side runtime config', e);
+    }
+  }
+  
+  // Direct access fallback (process.env for server, empty for client if not in Next.js data)
+  return typeof process !== 'undefined' ? process.env : {};
+};
+
 // Validators (only used during initialization)
 const isValidUrl = (url: string): boolean => {
   if (isVercelBuild) return true; // Skip validation during build
@@ -71,7 +92,9 @@ const getCriticalVar = (key: string, validator?: (val: string) => boolean): stri
     return `build-placeholder-${key.toLowerCase()}`;
   }
 
-  const value = process.env[key];
+  // Enhanced environment variable access strategy that works in all contexts
+  const clientEnv = getClientEnv();
+  const value = clientEnv[key] || process.env[key];
   
   if (!value) {
     if (ENV.isProd && !isVercelBuild) {

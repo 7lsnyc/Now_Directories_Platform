@@ -28,8 +28,10 @@ const nextConfig = {
     ENABLE_ANALYTICS: process.env.ENABLE_ANALYTICS === 'true' ? 'true' : 'false',
     DEBUG_MODE: process.env.DEBUG_MODE === 'true' ? 'true' : 'false',
     API_TIMEOUT_MS: process.env.API_TIMEOUT_MS || '10000',
-    // Note: We don't inline sensitive variables like Supabase keys here
-    // as that would expose them to the client bundle for all users
+    // Critical: These NEXT_PUBLIC_* variables MUST be passed to the client bundle
+    // They are already in Vercel.json, but Next.js needs them explicitly here as well
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
   }
 };
 
