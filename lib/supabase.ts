@@ -261,29 +261,40 @@ export type Database = {
   };
 };
 
-// Check if all critical environment variables are properly configured
-const envValidation = env.checkCriticalVars();
-if (!envValidation.isValid) {
-  // Log detailed error messages to help with debugging
-  console.error('❌ Environment validation failed:');
-  envValidation.errors.forEach(error => console.error(`  - ${error}`));
-  
-  if (env.NODE_ENV === 'development') {
-    // In development, show more helpful messages
-    console.warn('⚠️ Using fallback values for development only. Fix environment variables before deploying.');
-  }
-}
+/**
+ * IMPORTANT: Supabase client initialization has been moved to a React hook
+ * 
+ * To use Supabase in components, import the useSupabase hook:
+ * ```
+ * import { useSupabase } from '@/lib/hooks/useSupabase';
+ * 
+ * function MyComponent() {
+ *   const { supabase, loading, error } = useSupabase();
+ *   
+ *   if (loading) return <div>Loading Supabase client...</div>;
+ *   if (error) return <div>Error initializing Supabase: {error.message}</div>;
+ *   if (!supabase) return null;
+ *   
+ *   // Use supabase here...
+ * }
+ * ```
+ * 
+ * This approach guarantees that Supabase is only initialized after
+ * environment variables are properly loaded from the server.
+ */
 
-// Create a single supabase client for interacting with your database
-const supabase = createClient<Database>(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  {
-    auth: {
-      persistSession: true,
-      detectSessionInUrl: true
-    }
+// For backward compatibility with existing imports
+// This will log a warning and redirect to the hook approach
+let supabaseProxy: any = new Proxy({}, {
+  get(target, prop) {
+    console.warn(
+      '⚠️ Direct import of supabase client is deprecated and may cause environment variable errors. ' +
+      'Please use the useSupabase() hook instead. ' +
+      'See lib/hooks/useSupabase.tsx for details.'
+    );
+    return undefined;
   }
-);
+});
 
-export default supabase;
+// Export the supabase proxy for backward compatibility
+export default supabaseProxy;

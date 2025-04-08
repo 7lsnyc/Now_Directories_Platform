@@ -306,3 +306,6 @@ if (ENV.isBrowser && !isVercelBuild) {
 }
 
 export default env;
+
+// Export the fetchClientEnv function for direct use in components
+export { fetchClientEnv };

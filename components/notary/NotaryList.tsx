@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase';
 import NotarySearchForm, { SearchFilters } from './NotarySearchForm';
 import { kmToMiles } from '@/utils/geocoding';
 import { Directory, DirectoryThemeColors } from '@/types/directory';
+import { useSupabase } from '@/lib/hooks/useSupabase';
 
 // Types
 type Notary = Database['public']['Tables']['notaries']['Row'];
@@ -43,50 +44,42 @@ export default function NotaryList({
     maxDistance: 20 
   });
   
-  // Use a ref for the Supabase client to avoid recreating it on each render
-  const supabaseRef = useRef<SupabaseClient<Database> | null>(null);
+  // Use the new useSupabase hook instead of creating our own client
+  const { supabase, loading: supabaseLoading, error: supabaseError } = useSupabase();
   
-  // Initialize the Supabase client on the client side only to prevent hydration errors
-  useEffect(() => {
-    if (!supabaseRef.current && typeof window !== 'undefined') {
-      supabaseRef.current = createClient<Database>(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-    }
-  }, []);
-
   // Check for notary data availability
   useEffect(() => {
+    // Only proceed when Supabase client is ready
+    if (!supabase || supabaseLoading) return;
+    
     const checkNotaryData = async () => {
-      if (supabaseRef.current) {
-        try {
-          const { data, error, count } = await supabaseRef.current
-            .from('notaries')
-            .select('*', { count: 'exact' })
-            .eq('directory_slug', slug);
-          
-          if (error) {
-            console.error(`Error fetching notary data for ${slug}:`, error.message);
-          } else if (!data || data.length === 0) {
-            console.warn(`No notary data found for directory: ${slug}`);
-          }
-        } catch (err) {
-          console.error('Error in initial data check:', err instanceof Error ? err.message : 'Unknown error');
+      try {
+        const { data, error, count } = await supabase
+          .from('notaries')
+          .select('*', { count: 'exact' })
+          .eq('directory_slug', slug);
+        
+        if (error) {
+          console.error(`Error fetching notary data for ${slug}:`, error.message);
+        } else if (!data || data.length === 0) {
+          console.warn(`No notary data found for directory: ${slug}`);
         }
+      } catch (err) {
+        console.error('Error in initial data check:', err instanceof Error ? err.message : 'Unknown error');
       }
     };
     
     checkNotaryData();
-  }, [slug]);
+  }, [supabase, supabaseLoading, slug]);
 
   // Load available service types for the filter dropdown
   useEffect(() => {
+    // Only proceed when Supabase client is ready
+    if (!supabase || supabaseLoading) return;
+    
     const loadAvailableServices = async () => {
-      if (!supabaseRef.current) return;
-      
       try {
-        const { data, error } = await supabaseRef.current
+        const { data, error } = await supabase
           .from('notaries')
           .select('services')
           .eq('directory_slug', slug);
@@ -112,7 +105,7 @@ export default function NotaryList({
     };
     
     loadAvailableServices();
-  }, [supabaseRef, slug]);
+  }, [supabase, supabaseLoading, slug]);
 
   /**
    * Search for notaries based on location and apply filters
@@ -121,6 +114,12 @@ export default function NotaryList({
     coordinates: Coordinates, 
     filters: SearchFilters
   ) => {
+    // Ensure Supabase client is available
+    if (!supabase) {
+      setError('Unable to connect to the database. Please try again later.');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     setCurrentFilters(filters);
@@ -132,7 +131,7 @@ export default function NotaryList({
       }
       
       // Start building the query
-      let query = supabaseRef.current!
+      let query = supabase
         .from('notaries')
         .select('*')
         .eq('directory_slug', slug);
@@ -227,9 +226,33 @@ export default function NotaryList({
     return distance;
   };
 
-  // Get primary color from directory data or fallback to theme colors
-  const primaryColor = directoryData?.brand_color_primary || themeColors.primary;
+  // Primary color for UI elements
+  const primaryColor = themeColors?.primary || '#6366F1';
 
+  // Show Supabase connection errors if they occur
+  if (supabaseError) {
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-md text-red-700">
+        <h3 className="font-bold text-lg">Connection Error</h3>
+        <p>There was a problem connecting to our database. Please try refreshing the page.</p>
+        <p className="text-sm mt-2">Technical details: {supabaseError.message}</p>
+      </div>
+    );
+  }
+
+  // Show loading state while Supabase initializes
+  if (supabaseLoading) {
+    return (
+      <div className="p-6 text-center">
+        <div 
+          className="inline-block animate-spin h-8 w-8 border-4 rounded-full" 
+          style={{ borderColor: `${primaryColor} transparent transparent transparent` }}
+        ></div>
+        <p className="mt-2">Initializing application...</p>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-6">
       {/* Search Form */}
