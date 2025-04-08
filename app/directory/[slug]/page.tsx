@@ -89,22 +89,19 @@ function GenericDirectoryContent({ directory }: { directory: Directory }) {
  */
 async function getDirectoryData(slug: string): Promise<Directory | null> {
   console.log(`[DEBUG] Fetching directory data for slug: ${slug}`);
+  
   try {
-    // Log environment variable status (for debugging only)
-    console.log(`[DEBUG] Supabase URL available: ${!!serverEnv.supabase.url}`);
-    console.log(`[DEBUG] Supabase service role key available: ${!!serverEnv.supabase.serviceRoleKey}`);
-    
-    // Create a new server client instance with proper error handling
+    // Create a server client instance directly
     const supabase = createServerClient();
     
-    console.log('[DEBUG] Supabase client created successfully');
+    console.log('[DEBUG] Supabase client created, executing query');
     
     const { data, error } = await supabase
       .from('directories')
       .select('*')
       .eq('directory_slug', slug)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
     
     if (error) {
       console.error(`[DEBUG] Error fetching directory data: ${error.message}`);
