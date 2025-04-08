@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { RuntimeConfig } from '@/app/env-config';
 
 /**
  * This context and provider ensures that client-side components
@@ -46,21 +47,27 @@ export function SupabaseProvider({ children }: { children: React.ReactNode }) {
     // Function to create a real client once we have the environment variables
     const initializeRealClient = async () => {
       try {
-        // Get the environment variables from Next.js
-        // Next.js injects these values at build time into the client JS
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+        // Use the runtime config values guaranteed to be available at runtime
+        const supabaseUrl = RuntimeConfig.NEXT_PUBLIC_SUPABASE_URL;
+        const supabaseAnonKey = RuntimeConfig.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+        // Check for client-side window.__RUNTIME_CONFIG which may contain updated values
+        const windowConfig = typeof window !== 'undefined' ? (window as any).__RUNTIME_CONFIG : null;
+        
+        // Use window config values if available (these are guaranteed to be embedded in the client JS)
+        const finalUrl = windowConfig?.NEXT_PUBLIC_SUPABASE_URL || supabaseUrl || '';
+        const finalKey = windowConfig?.NEXT_PUBLIC_SUPABASE_ANON_KEY || supabaseAnonKey || '';
 
         // Verify that we have the required values
-        if (!supabaseUrl || !supabaseAnonKey) {
+        if (!finalUrl || !finalKey) {
           console.error('Missing Supabase environment variables');
           return;
         }
 
         // Create the real client with the actual environment variables
         const realClient = createSupabaseClient(
-          supabaseUrl,
-          supabaseAnonKey,
+          finalUrl,
+          finalKey,
           { auth: { autoRefreshToken: true, persistSession: true } }
         );
 
@@ -103,9 +110,17 @@ export function useSupabase() {
  * a client instance without sharing state
  */
 export function createClient() {
-  // Initialize with environment variables or fallbacks
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || fallbackUrl;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || fallbackKey;
+  // Check for the global runtime config which is guaranteed to be available
+  const windowConfig = typeof window !== 'undefined' ? (window as any).__RUNTIME_CONFIG : null;
+  
+  // Use window config first (guaranteed embedded), then RuntimeConfig, then fallbacks
+  const supabaseUrl = windowConfig?.NEXT_PUBLIC_SUPABASE_URL || 
+                     RuntimeConfig.NEXT_PUBLIC_SUPABASE_URL || 
+                     fallbackUrl;
+  
+  const supabaseAnonKey = windowConfig?.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+                         RuntimeConfig.NEXT_PUBLIC_SUPABASE_ANON_KEY || 
+                         fallbackKey;
 
   return createSupabaseClient(
     supabaseUrl,

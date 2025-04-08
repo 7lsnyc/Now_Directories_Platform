@@ -1,4 +1,5 @@
 import '../styles/globals.css';
+import './env-config'; // Import this first to ensure environment variables are available
 import type { Metadata } from 'next';
 import { loadConfig } from '@/lib/config/loadConfig';
 import ThemeProvider from '@/components/ThemeProvider';
