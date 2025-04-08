@@ -1,7 +1,7 @@
 import '../styles/globals.css';
 import type { Metadata } from 'next';
 import { createServerClient } from '@/lib/supabase/server';
-import { SupabaseProvider } from '@/lib/supabase/client';
+import { SupabaseProvider } from '@/lib/supabase/clientProvider';
 import ThemeProvider from '@/components/ThemeProvider';
 import { headers } from 'next/headers';
 import DirectoryDebug from '@/components/DirectoryDebug';
