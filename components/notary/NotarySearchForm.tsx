@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
-import { geocodeAddress } from '@/utils/geocoding';
+import { geocodeAddress, getAddressFromCoordinates } from '@/utils/geocoding';
 
 // Define the structure for geographic coordinates
 export interface Coordinates {
@@ -94,7 +94,7 @@ export default function NotarySearchForm({
     setStatusType('');
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const coords = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude
@@ -103,8 +103,25 @@ export default function NotarySearchForm({
         setLocationStatus('✓ Using your current location');
         setStatusType('success');
         
-        // Trigger search with the detected location and current filters
+        // Immediately trigger search with the detected location and current filters
         onSearch(coords, filters);
+        
+        // Try to get a human-readable address for these coordinates
+        try {
+          const address = await getAddressFromCoordinates(coords.latitude, coords.longitude);
+          
+          if (address) {
+            // Update the location input with the reverse geocoded address
+            setLocationInput(address);
+          } else {
+            // If reverse geocoding fails, show the raw coordinates
+            setLocationInput(`Lat: ${coords.latitude.toFixed(4)}, Lng: ${coords.longitude.toFixed(4)}`);
+          }
+        } catch (error) {
+          console.error('Error during reverse geocoding:', error);
+          // Fallback to showing raw coordinates
+          setLocationInput(`Lat: ${coords.latitude.toFixed(4)}, Lng: ${coords.longitude.toFixed(4)}`);
+        }
       },
       (error) => {
         let errorMessage = 'Unable to retrieve your location';

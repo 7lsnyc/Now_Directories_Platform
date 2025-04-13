@@ -1,6 +1,7 @@
 /**
  * Geocoding utilities for converting addresses into coordinates
  * Uses Nominatim (OpenStreetMap) as a free geocoding service
+ * and Google Maps API (via server API route) for reverse geocoding
  */
 
 interface GeocodingResult {
@@ -109,4 +110,33 @@ export function kmToMiles(km: number): number {
  */
 export function milesToKm(miles: number): number {
   return miles / 0.621371;
+}
+
+/**
+ * Convert coordinates to a human-readable address using reverse geocoding
+ * Uses our secure API route proxy to call Google Maps API with server-side API key
+ */
+export async function getAddressFromCoordinates(latitude: number, longitude: number): Promise<string | null> {
+  try {
+    // Call our own API route which securely proxies to Google Maps
+    const response = await fetch(`/api/geocode/reverse?lat=${latitude}&lng=${longitude}`);
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Reverse geocoding error:', response.status, errorData);
+      return null;
+    }
+    
+    const data = await response.json();
+    
+    // Return the address if available
+    if (data && typeof data.address === 'string' && data.address.trim()) {
+      return data.address;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting address from coordinates:', error instanceof Error ? error.message : 'Unknown error');
+    return null;
+  }
 }
