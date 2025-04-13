@@ -5,10 +5,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { createServerClient } from '@/lib/supabase/server';
 import { Directory } from '@/types/directory';
-import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry';
 import { getTextColorForBackground } from '@/utils/accessibility';
 import { FaMapMarkerAlt, FaSearch, FaMobileAlt, FaClock, FaStar, FaCheckCircle } from 'react-icons/fa';
-import SearchComponentWrapper from '@/components/directory/SearchComponentWrapper';
+import SearchArea from '@/components/directory/SearchArea';
 
 // Generic skeleton component for loading state
 function DirectoryPageSkeleton() {
@@ -177,10 +176,6 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
     return null;
   }
   
-  // Get components from registry based on directory features
-  const SearchFormComponent = directoryData ? getSearchFormComponent(directoryData) : null;
-  const ListWrapperComponent = directoryData ? getListWrapperComponent(directoryData) : null;
-
   // Theme colors with fallbacks
   const themeColors = {
     primary: directoryData.brand_color_primary || '#3B82F6',
@@ -276,27 +271,18 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
                 </div>
               </div>
             </div>
-            
-            {/* Search Form */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-                Find {serviceLabel} Near You
-              </h2>
-              
-              {/* Render SearchComponentWrapper if available */}
-              {SearchFormComponent ? (
-                <SearchComponentWrapper
-                  slug={params.slug}
-                  directoryData={directoryData}
-                  themeColors={themeColors}
-                />
-              ) : (
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
-                  <p className="text-gray-600">Search functionality is coming soon for this directory.</p>
-                </div>
-              )}
-            </div>
           </div>
+        </div>
+      </section>
+      
+      {/* Main Content Section - Contains both Search Form and Results */}
+      <section className="py-16">
+        <div className="container mx-auto px-4">
+          <SearchArea 
+            slug={params.slug}
+            directoryData={directoryData}
+            themeColors={themeColors}
+          />
         </div>
       </section>
       
@@ -318,26 +304,6 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
               />
             ))}
           </div>
-        </div>
-      </section>
-      
-      {/* Main Content Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          {/* Check if a ListWrapperComponent exists before rendering */}
-          {ListWrapperComponent && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-semibold mb-6">
-                {directoryData.name} Results
-              </h2>
-              <ListWrapperComponent 
-                slug={params.slug} 
-                directoryData={directoryData}
-                themeColors={themeColors}
-                searchParams={null}
-              />
-            </div>
-          )}
         </div>
       </section>
       

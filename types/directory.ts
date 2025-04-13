@@ -17,6 +17,7 @@ export interface Directory {
   directory_slug: string;
   domain: string | null;
   description: string | null;
+  service_label?: string;  // Label for the type of service this directory provides
   
   // Display and branding
   icon_name: string;
