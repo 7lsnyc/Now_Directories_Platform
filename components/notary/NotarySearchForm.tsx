@@ -57,7 +57,11 @@ export default function NotarySearchForm({
 
   // Handle location input changes
   const handleLocationInputChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setLocationInput(e.target.value);
+    const newValue = e.target.value;
+    console.log('[SEARCH-DEBUG] Location input changed to:', newValue);
+    setLocationInput(newValue);
+    // Clear any previous coordinates when user starts typing
+    setCoordinates(null);
     // Clear any previous status messages when user starts typing
     setLocationStatus('');
     setStatusType('');
@@ -128,15 +132,9 @@ export default function NotarySearchForm({
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    // If we already have coordinates from geolocation, use those
-    if (coordinates) {
-      onSearch(coordinates, filters);
-      return;
-    }
-    
-    // Otherwise, geocode the entered address
-    if (!locationInput.trim()) {
-      setLocationStatus('Please enter a location or use geolocation');
+    // If no location is provided, show an error message
+    if (!locationInput) {
+      setLocationStatus('Please enter a location or use "Detect my location"');
       setStatusType('error');
       return;
     }
@@ -144,23 +142,36 @@ export default function NotarySearchForm({
     setLocationStatus('Searching...');
     setStatusType('');
     
-    // Call the geocoding utility to convert address to coordinates
-    const result = await geocodeAddress(locationInput);
-    
-    if (result.success) {
-      const coords = {
+    // Always geocode the entered address to get coordinates
+    try {
+      const result = await geocodeAddress(locationInput);
+      
+      if (!result.success) {
+        setLocationStatus('Could not find coordinates for this location. Please try a different address.');
+        setStatusType('error');
+        return;
+      }
+      
+      // Transform to Coordinates format
+      const coords: Coordinates = {
         latitude: result.lat,
         longitude: result.lon
       };
+      
+      // Save the coordinates for reference
       setCoordinates(coords);
-      setLocationStatus('✓ Location found');
-      setStatusType('success');
       
       // Trigger search with the geocoded coordinates and current filters
+      console.log('[SEARCH-DEBUG] Submitting search with geocoded coordinates:', coords, 'and filters:', filters);
       onSearch(coords, filters);
-    } else {
-      setLocationStatus(result.error || 'Location not found');
+      
+      // Show success message
+      setLocationStatus('✓ Location found');
+      setStatusType('success');
+    } catch (error) {
+      setLocationStatus('Error finding location. Please try again with a more specific address.');
       setStatusType('error');
+      console.error('Geocoding error:', error);
     }
   };
   

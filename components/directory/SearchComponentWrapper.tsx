@@ -21,7 +21,13 @@ export default function SearchComponentWrapper({
   directoryData,
   themeColors
 }: SearchComponentWrapperProps) {
-  const [results, setResults] = useState<any[]>([]);
+  // Store search parameters to pass down to the list component
+  const [searchParams, setSearchParams] = useState<{
+    coordinates: Coordinates;
+    filters: SearchFilters;
+  } | null>(null);
+  
+  // State for loading status (managed here to communicate with form)
   const [isLoading, setIsLoading] = useState(false);
   
   // Get the appropriate components from the registry based on directory features
@@ -32,37 +38,12 @@ export default function SearchComponentWrapper({
   // For now, we'll hardcode common notary services
   const availableServices = ['Mobile Notary', 'Remote Online Notary', 'Office Notary'];
   
-  // Handle search form submission
-  const handleSearch = async (coordinates: Coordinates, filters: SearchFilters) => {
-    if (!directoryData) return;
+  // Handle search form submission by updating search parameters
+  const handleSearch = (coordinates: Coordinates, filters: SearchFilters) => {
+    console.log('[SEARCH-DEBUG] SearchComponentWrapper received search:', { coordinates, filters });
     
-    setIsLoading(true);
-    
-    try {
-      // Call API route to search for listings
-      const searchParams = new URLSearchParams({
-        lat: coordinates.latitude.toString(),
-        lng: coordinates.longitude.toString(),
-        radius: filters.maxDistance.toString(),
-        service: filters.serviceType || '',
-        minRating: filters.minimumRating ? '3.5' : '0'
-      });
-      
-      const response = await fetch(`/api/directories/${slug}/search?${searchParams.toString()}`);
-      
-      if (!response.ok) {
-        throw new Error('Search failed');
-      }
-      
-      const data = await response.json();
-      setResults(data.results || []);
-    } catch (error) {
-      console.error('Search error:', error);
-      // Set empty results on error
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
+    // Update search parameters - this will trigger the list component to fetch data
+    setSearchParams({ coordinates, filters });
   };
   
   // If no search component is available, show a message
@@ -98,8 +79,8 @@ export default function SearchComponentWrapper({
             slug={slug}
             directoryData={directoryData}
             themeColors={themeColors}
-            results={results}
-            loading={isLoading}
+            searchParams={searchParams}
+            setIsLoading={setIsLoading}
           />
         </div>
       )}
