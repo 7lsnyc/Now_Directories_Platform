@@ -122,173 +122,188 @@ export default function NotaryList({
     loadAvailableServices();
   }, [supabase, supabaseLoading, slug]);
 
-  // React to search parameters changes
-  useEffect(() => {
-    if (!searchParams || !supabase) {
-      console.log('[SEARCH-DEBUG] NotaryList useEffect skipped - no searchParams or supabase');
-      return;
-    }
-    
-    // Set loading state in parent component if provided
-    if (setIsLoading) setIsLoading(true);
-    
-    const hasCoordinatesChanged = lastCoordinatesRef.current ? 
-      JSON.stringify(lastCoordinatesRef.current) !== JSON.stringify(searchParams.coordinates) : 
-      true;
-    
-    console.log('[SEARCH-DEBUG] NotaryList useEffect triggered with new searchParams:', {
-      coordinates: searchParams.coordinates,
-      filters: searchParams.filters,
-      prevCoordinates: lastCoordinatesRef.current,
-      hasCoordinatesChanged
-    });
-    
-    // Execute search with the new parameters
-    searchNotaries(searchParams.coordinates, searchParams.filters);
-    
-  }, [searchParams, supabase, setIsLoading]);
-
-  /**
-   * Search for notaries based on location and apply filters
-   */
-  const searchNotaries = async (
-    coordinates: Coordinates, 
-    filters: SearchFilters
-  ) => {
-    // Ensure Supabase client is available
-    if (!supabase) {
-      setError('Unable to connect to the database. Please try again later.');
-      return;
-    }
-    
-    console.log('[SEARCH-DEBUG] NotaryList.searchNotaries called with:', { 
-      coordinates, 
-      filters,
-      slug 
-    });
-    
-    // Save the coordinates for comparison in future searches
-    lastCoordinatesRef.current = coordinates;
-    
-    // Update current filters for display
-    setCurrentFilters(filters);
-    
-    // Start loading state
-    setLoading(true);
-    if (setIsLoading) setIsLoading(true);
-    setError(null);
-    
-    try {
-      // Convert miles to kilometers for the database query
-      // Supabase PostGIS uses meters, so multiply by 1000
-      const radiusMeters = milesToKm(filters.maxDistance) * 1000;
-      
-      console.log('[SEARCH-DEBUG] Executing Supabase query with params:', {
-        lat: coordinates.latitude,
-        lng: coordinates.longitude,
-        radiusMeters,
-        serviceType: filters.serviceType,
-        minRating: filters.minimumRating ? 3.5 : 0
-      });
-      
-      // Query notaries from Supabase
-      let query = supabase
-        .from('notaries')
-        .select('*')
-        .eq('directory_slug', slug)
-        .filter('is_active', 'eq', true);
-      
-      // Add minimum rating filter if requested
-      if (filters.minimumRating) {
-        query = query.gte('rating', 3.5);
-      }
-      
-      // Add service type filter if specified
-      if (filters.serviceType) {
-        // Using Postgres array contains operator for array search
-        query = query.contains('services', [filters.serviceType]);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        throw error;
-      }
-      
-      if (!data || data.length === 0) {
-        console.log('[SEARCH-DEBUG] No notaries found in the database query');
-        setNotaries([]);
-        setFilteredNotaries([]);
-        setSearchPerformed(true);
-        setLoading(false);
-        if (setIsLoading) setIsLoading(false);
-        return;
-      }
-      
-      console.log(`[SEARCH-DEBUG] Initial query returned ${data.length} notaries before distance filtering`);
-      
-      // Calculate distance for each notary and add as a property
-      const notariesWithDistance = data.map(notary => {
-        // Nullable check for lat/lng
-        if (notary.latitude && notary.longitude) {
-          const distanceKm = calculateDistance(
-            coordinates.latitude,
-            coordinates.longitude,
-            notary.latitude,
-            notary.longitude
-          );
-          const distanceMiles = kmToMiles(distanceKm);
-          return { ...notary, distance: distanceMiles };
-        }
-        // If notary doesn't have coordinates, set a very large distance
-        return { ...notary, distance: 9999 };
-      });
-      
-      // Filter by distance and sort by proximity
-      const filteredByDistance = notariesWithDistance
-        .filter(notary => notary.distance <= filters.maxDistance)
-        .sort((a, b) => (a.distance as number) - (b.distance as number));
-      
-      console.log(`[SEARCH-DEBUG] After distance filtering, ${filteredByDistance.length} notaries within ${filters.maxDistance} miles`);
-      
-      // Update state with the results
-      setNotaries(notariesWithDistance);
-      setFilteredNotaries(filteredByDistance);
-      setSearchPerformed(true);
-    } catch (err) {
-      console.error('[SEARCH-DEBUG] Search error:', err);
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      setFilteredNotaries([]);
-    } finally {
-      setLoading(false);
-      if (setIsLoading) setIsLoading(false);
-    }
-  };
-
   /**
    * Calculate the distance between two coordinate points
-   * Using the Haversine formula to calculate distance between two points on a sphere
    */
-  const calculateDistance = (
-    lat1: number, 
-    lon1: number, 
-    lat2: number, 
-    lon2: number
-  ): number => {
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
     const R = 6371; // Radius of the earth in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
       Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
       Math.sin(dLon/2) * Math.sin(dLon/2);
-    
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    const distance = R * c; // Distance in km
-    
-    return distance;
+    return R * c;
   };
+
+  /**
+   * Convert kilometers to miles
+   */
+  const kmToMiles = (km: number): number => {
+    return km * 0.621371;
+  };
+
+  /**
+   * Convert miles to kilometers
+   */
+  const milesToKm = (miles: number): number => {
+    return miles / 0.621371;
+  };
+
+  /**
+   * Fetches and filters notaries based on coordinates and filters.
+   * Updated to remove the non-existent 'is_active' filter.
+   */
+  const performSearch = useCallback(async (coordinates: Coordinates | null, filters: SearchFilters) => {
+    // Ensure coordinates are provided before proceeding
+    if (!coordinates) {
+        console.warn('[SEARCH-DEBUG] performSearch: No coordinates provided.');
+        setError('Cannot search without valid coordinates.');
+        setLoading(false);
+        setSearchPerformed(true); // Mark as attempted
+        setFilteredNotaries([]); // Clear results
+        return;
+    }
+
+    // Ensure Supabase client is available
+    if (!supabase) {
+      console.error('[SEARCH-DEBUG] performSearch: Supabase client not ready.');
+      setError('Database connection not ready. Please wait a moment.');
+      setLoading(false);
+      setSearchPerformed(true); // Mark as attempted even if client wasn't ready
+      setFilteredNotaries([]); // Clear results if client fails
+      return;
+    }
+
+    console.log('[SEARCH-DEBUG] NotaryList.performSearch executing with:', { coordinates, filters });
+    setLoading(true);
+    setError(null);
+    setFilteredNotaries([]); // Clear previous results before new search
+
+    try {
+      const radiusKm = milesToKm(filters.maxDistance);
+
+      console.log('[SEARCH-DEBUG] Executing Supabase query with parameters:', {
+        directory_slug: slug,
+        radiusKm,
+        lat: coordinates.latitude,
+        lng: coordinates.longitude,
+        serviceType: filters.serviceType,
+        minRating: filters.minimumRating ? 3.5 : 0
+      });
+
+      // --- Query Starts ---
+      let query = supabase
+        .from('notaries') // Target the 'notaries' table
+        .select('*')      // Select all columns for now
+        .eq('directory_slug', slug); // Filter by the directory slug
+
+      // ** REMOVED FILTER: .eq('is_active', true) ** -> This column does not exist
+
+      // Apply optional service type filter
+      if (filters.serviceType) {
+        query = query.contains('services', [filters.serviceType]);
+      }
+
+      // Apply optional minimum rating filter
+      if (filters.minimumRating) {
+        // Schema confirms 'rating' column exists
+        query = query.gte('rating', 3.5);
+      }
+      // --- Query Ends ---
+
+      const { data, error: queryError } = await query;
+
+      if (queryError) {
+        // Throw query errors to be caught by the main catch block
+        throw queryError;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('[SEARCH-DEBUG] No matching notaries found in DB for slug/filters.');
+        setFilteredNotaries([]);
+      } else {
+         console.log(`[SEARCH-DEBUG] Initial query returned ${data.length} notaries before distance filtering`);
+         // Calculate distance and filter client-side
+         const notariesWithDistance = data.map(notary => {
+           const lat = typeof notary.latitude === 'number' ? notary.latitude : 0;
+           const lon = typeof notary.longitude === 'number' ? notary.longitude : 0;
+           const distance = calculateDistance(
+             coordinates.latitude,
+             coordinates.longitude,
+             lat,
+             lon
+           );
+           return {
+             ...notary,
+             // Handle case where distance calculation might return Infinity
+             distance: Number.isFinite(distance) ? kmToMiles(distance) : Infinity
+           };
+         });
+
+         // Filter by distance and sort
+         const filtered = notariesWithDistance
+           .filter(notary => typeof notary.distance === 'number' && notary.distance <= filters.maxDistance)
+           .sort((a, b) => (a.distance as number) - (b.distance as number));
+
+         console.log(`[SEARCH-DEBUG] After distance filtering, ${filtered.length} notaries within ${filters.maxDistance} miles`);
+         setFilteredNotaries(filtered);
+      }
+
+    } catch (err) {
+      console.error('[SEARCH-DEBUG] Supabase query error:', err);
+      // Set a user-friendly error message
+      setError(err instanceof Error ? `Search failed: ${err.message}` : 'An unknown error occurred during search.');
+      setFilteredNotaries([]); // Clear results on error
+    } finally {
+      setLoading(false);
+      setSearchPerformed(true); // Mark search as completed (or attempted)
+    }
+    // Dependencies for useCallback: supabase client and the slug used in the query
+  }, [supabase, slug]);
+
+  // useEffect to trigger search when parameters change
+  useEffect(() => {
+    console.log('[SEARCH-DEBUG] NotaryList useEffect triggered. searchParams:', searchParams, 'supabase ready:', !!supabase);
+    
+    if (searchParams && searchParams.coordinates && supabase) {
+      // Save the coordinates for comparison in future searches
+      lastCoordinatesRef.current = searchParams.coordinates;
+      
+      // Update current filters for display
+      setCurrentFilters(searchParams.filters);
+      
+      // Start loading state
+      setLoading(true);
+      if (setIsLoading) setIsLoading(true);
+      
+      // Execute search with the new parameters
+      performSearch(searchParams.coordinates, searchParams.filters);
+    } else if (searchParams === null) {
+      // Handle initial state or cleared search
+      setFilteredNotaries([]);
+      setSearchPerformed(false);
+      setError(null);
+      setLoading(false);
+      if (setIsLoading) setIsLoading(false);
+    } else if (searchParams && !searchParams.coordinates) {
+      // Handle case where search was requested without coordinates
+      console.warn("[SEARCH-DEBUG] Search requested but no coordinates available.");
+      setFilteredNotaries([]);
+      setSearchPerformed(true);
+      setError("Please provide a valid location for the search.");
+      setLoading(false);
+      if (setIsLoading) setIsLoading(false);
+    } else if (!supabase) {
+      // Handle case where Supabase client failed to initialize
+      setError("Database connection unavailable. Please refresh.");
+      setFilteredNotaries([]);
+      setSearchPerformed(true);
+      setLoading(false);
+      if (setIsLoading) setIsLoading(false);
+    }
+  }, [searchParams, supabase, performSearch, setIsLoading]);
 
   // Primary color for UI elements
   const primaryColor = themeColors?.primary || '#3B82F6';
