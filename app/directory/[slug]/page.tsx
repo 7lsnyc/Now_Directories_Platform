@@ -87,12 +87,8 @@ function GenericDirectoryContent({ directory }: { directory: Directory }) {
  * Fetch directory data from Supabase
  */
 async function getDirectoryData(slug: string): Promise<Directory | null> {
-  console.log(`[DEBUG] Fetching directory data for slug: ${slug}`);
-  
   try {
     const supabase = createServerClient();
-    
-    console.log('[DEBUG] Supabase client created, executing query');
     
     const { data, error } = await supabase
       .from('directories')
@@ -102,19 +98,15 @@ async function getDirectoryData(slug: string): Promise<Directory | null> {
       .maybeSingle();
     
     if (error) {
-      console.error(`[DEBUG] Error fetching directory data: ${error.message}`);
       return null;
     }
     
     if (!data) {
-      console.error(`[DEBUG] No data returned from Supabase for slug: ${slug}`);
       return null;
     }
     
-    console.log(`[DEBUG] Successfully retrieved directory data for: ${data.name}`);
     return data as Directory;
   } catch (error) {
-    console.error(`[DEBUG] Failed to fetch directory from Supabase: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
@@ -177,31 +169,22 @@ function FeatureItem({ icon, title, description, primaryColor }:
 export default async function DirectoryPage({ params }: DirectoryPageProps) {
   const { slug } = params;
   
-  console.log(`[DEBUG Page] Rendering directory page for slug: ${slug}`);
-  
   // Get directory data from Supabase
   const directoryData = await getDirectoryData(slug);
   
   if (!directoryData) {
-    console.error(`[DEBUG Page] No directory data found for slug: ${slug}`);
     notFound();
     return null;
   }
   
-  console.log(`[DEBUG Page] Found directory data for: ${directoryData.name}`, {
-    slug: directoryData.directory_slug,
-    features: directoryData?.features || []
-  });
-  
-  // Calculate theme colors from directory data for server rendering
-  // These will be overridden by the DirectoryContext on the client
+  // Theme colors with fallbacks
   const themeColors = {
-    primary: directoryData.brand_color_primary || '#1e40af',
-    secondary: directoryData.brand_color_secondary || '#1e3a8a',
-    accent: directoryData.brand_color_accent || '#f97316',
-    primaryText: getTextColorForBackground(directoryData.brand_color_primary || '#1e40af'),
-    secondaryText: getTextColorForBackground(directoryData.brand_color_secondary || '#1e3a8a'),
-    accentText: getTextColorForBackground(directoryData.brand_color_accent || '#f97316')
+    primary: directoryData.brand_color_primary || '#3B82F6',
+    secondary: directoryData.brand_color_secondary || '#1E40AF',
+    accent: directoryData.brand_color_accent || '#F59E0B',
+    primaryText: getTextColorForBackground(directoryData.brand_color_primary || '#3B82F6'),
+    secondaryText: getTextColorForBackground(directoryData.brand_color_secondary || '#1E40AF'),
+    accentText: getTextColorForBackground(directoryData.brand_color_accent || '#F59E0B'),
   };
   
   // Use the component registry to dynamically select the appropriate components

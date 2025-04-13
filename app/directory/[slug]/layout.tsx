@@ -35,14 +35,11 @@ const DirectoryLayout = async ({
       .single();
       
     if (error) {
-      console.log(`Error fetching directory data from Supabase: ${error.message}`);
       // Will fallback to local JSON
     } else if (data) {
       directoryData = data as Directory;
-      console.log(`[DEBUG Layout] Loaded directory from Supabase: ${directoryData.name}`);
     }
   } catch (error) {
-    console.error('Failed to fetch directory from Supabase:', error);
     // Will fallback to local JSON
   }
   
@@ -51,15 +48,8 @@ const DirectoryLayout = async ({
   
   if (!directoryData) {
     try {
-      console.log(`[DEBUG Layout] No Supabase data found for ${params.slug}, using loadConfig`);
-      // Use await since loadConfig is now async
       directoryConfig = await loadConfig(params.slug);
-      console.log(`[DEBUG Layout] Config loaded via loadConfig:`, {
-        name: directoryConfig?.name || 'unknown',
-        title: directoryConfig?.title || 'unknown'
-      });
     } catch (error) {
-      console.error(`[DEBUG Layout] Error in loadConfig for ${params.slug}:`, error);
       notFound();
       return null;
     }
@@ -67,7 +57,6 @@ const DirectoryLayout = async ({
 
   // If using local config and config is default (not found), return 404
   if (directoryConfig && directoryConfig.name === 'default') {
-    console.log(`[DEBUG Layout] Directory not found for ${params.slug}, returning 404`);
     notFound();
     // Return null for testing environments
     return null;
@@ -76,7 +65,6 @@ const DirectoryLayout = async ({
   // Use directoryData from Supabase as the source of truth if available
   // If we have no directory data and no config, return 404
   if (!directoryData && !directoryConfig) {
-    console.error(`[DEBUG Layout] No directory data or config found for ${params.slug}`);
     notFound();
     return null;
   }

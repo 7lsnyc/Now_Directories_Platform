@@ -14,17 +14,16 @@ export async function GET(request: NextRequest) {
   const headersList = headers();
   const directorySlug = slugFromQuery || headersList.get('x-directory-slug') || 'unknown';
   
-  console.log(`[DEBUG API] Requesting debug info for directory: ${directorySlug}`);
-  
   try {
     // Load the config for additional debug info - now using await since loadConfig is async
     const config = await loadConfig(directorySlug);
     
-    console.log(`[DEBUG API] Config loaded for ${directorySlug}:`, {
-      themeName: config.theme?.name || 'unknown',
-      primaryColor: config.theme?.colors?.primary || 'unknown',
-      title: config.title || 'unknown',
-    });
+    // Check if the directory was not found
+    if (!config || !config.name || config.name === 'default') {
+      return NextResponse.json({
+        error: `Directory not found for the requested slug: ${directorySlug}`
+      }, { status: 404 });
+    }
     
     return NextResponse.json({
       directorySlug,
@@ -33,7 +32,15 @@ export async function GET(request: NextRequest) {
       title: config.title || 'unknown',
     });
   } catch (error) {
-    console.error(`[DEBUG API] Error loading config for ${directorySlug}:`, error);
+    // Check if it's a PGRST error (Postgres REST error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const isPGRSTError = errorMessage.includes('PGRST');
+    
+    if (isPGRSTError || errorMessage.includes('not found')) {
+      return NextResponse.json({
+        error: `Directory not found for the requested slug: ${directorySlug}`
+      }, { status: 404 });
+    }
     
     return NextResponse.json({
       directorySlug,
