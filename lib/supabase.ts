@@ -7,7 +7,7 @@ export type Database = {
       directories: {
         Row: {
           id: string;
-          slug: string;
+          directory_slug: string;
           name: string;
           title: string;
           description: string;
@@ -40,7 +40,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          slug: string;
+          directory_slug: string;
           name: string;
           title: string;
           description: string;
@@ -73,7 +73,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          slug?: string;
+          directory_slug?: string;
           name?: string;
           title?: string;
           description?: string;
