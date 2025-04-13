@@ -70,16 +70,19 @@ export default function NotarySearchForm({
   // Handle service type selection
   const handleServiceTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setFilters(prev => ({ ...prev, serviceType: e.target.value }));
+    console.log('[SEARCH-DEBUG] Service type changed to:', e.target.value);
   };
 
   // Handle maximum distance selection
   const handleMaxDistanceChange = (e: ChangeEvent<HTMLSelectElement>) => {
     setFilters(prev => ({ ...prev, maxDistance: parseInt(e.target.value, 10) }));
+    console.log('[SEARCH-DEBUG] Maximum distance changed to:', parseInt(e.target.value, 10));
   };
 
   // Handle minimum rating toggle
   const handleMinimumRatingToggle = (e: ChangeEvent<HTMLInputElement>) => {
     setFilters(prev => ({ ...prev, minimumRating: e.target.checked }));
+    console.log('[SEARCH-DEBUG] Minimum rating toggle changed to:', e.target.checked);
   };
 
   // Detect user's current location using browser geolocation API
@@ -218,7 +221,7 @@ export default function NotarySearchForm({
             <input
               type="text"
               id="location"
-              className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               placeholder="Enter city, address, or zip code"
               value={locationInput}
               onChange={handleLocationInputChange}

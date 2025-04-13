@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Directory, DirectoryThemeColors } from '@/types/directory';
-import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry';
+import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry/componentRegistry';
 import { Coordinates, SearchFilters } from '@/components/notary/NotarySearchForm';
 
 interface SearchComponentWrapperProps {
@@ -36,6 +36,11 @@ export default function SearchComponentWrapper({
   // The available services should ideally come from the database
   // For now, we'll hardcode common notary services
   const availableServices = ['Mobile Notary', 'Remote Online Notary', 'Office Notary'];
+  
+  // Log whenever searchParams changes
+  useEffect(() => {
+    console.log('[SEARCH-DEBUG] SearchComponentWrapper searchParams updated:', searchParams);
+  }, [searchParams]);
   
   // Handle search form submission by updating search parameters
   const handleSearch = (coordinates: Coordinates, filters: SearchFilters) => {
