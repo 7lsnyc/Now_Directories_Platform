@@ -32,7 +32,6 @@ export default function SearchComponentWrapper({
   
   // Get the appropriate components from the registry based on directory features
   const SearchFormComponent = directoryData ? getSearchFormComponent(directoryData) : null;
-  const ListWrapperComponent = directoryData ? getListWrapperComponent(directoryData) : null;
   
   // The available services should ideally come from the database
   // For now, we'll hardcode common notary services
@@ -60,7 +59,7 @@ export default function SearchComponentWrapper({
   return (
     <div className="space-y-8">
       {/* Search Form */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div>
         <SearchFormComponent
           slug={slug}
           directoryData={directoryData}
@@ -71,19 +70,6 @@ export default function SearchComponentWrapper({
           onSearch={handleSearch}
         />
       </div>
-      
-      {/* Results List */}
-      {ListWrapperComponent && (
-        <div className="mt-8">
-          <ListWrapperComponent
-            slug={slug}
-            directoryData={directoryData}
-            themeColors={themeColors}
-            searchParams={searchParams}
-            setIsLoading={setIsLoading}
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -177,6 +177,10 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
     return null;
   }
   
+  // Get components from registry based on directory features
+  const SearchFormComponent = directoryData ? getSearchFormComponent(directoryData) : null;
+  const ListWrapperComponent = directoryData ? getListWrapperComponent(directoryData) : null;
+
   // Theme colors with fallbacks
   const themeColors = {
     primary: directoryData.brand_color_primary || '#3B82F6',
@@ -186,11 +190,6 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
     secondaryText: getTextColorForBackground(directoryData.brand_color_secondary || '#1E40AF'),
     accentText: getTextColorForBackground(directoryData.brand_color_accent || '#F59E0B'),
   };
-  
-  // Use the component registry to dynamically select the appropriate components
-  // based on directory features rather than hardcoded slug checks
-  const SearchFormComponent = getSearchFormComponent(directoryData);
-  const ListWrapperComponent = getListWrapperComponent(directoryData);
   
   // Default testimonials that can be overridden by directory-specific data
   const testimonials = [
@@ -240,38 +239,62 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
   
   return (
     <div className="bg-gray-50">
-      {/* Hero Section */}
-      <section className="relative py-20 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-100 to-white opacity-70"></div>
-        <div 
-          className="absolute inset-0 opacity-10" 
-          style={{ 
-            backgroundColor: themeColors.primary,
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` 
-          }}
-        ></div>
-        
-        <div className="container mx-auto px-4 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              <span className="block">{directoryData.name}</span>
-            </h1>
+      {/* Hero Section with Search */}
+      <section 
+        className="py-16 bg-gradient-to-br"
+        style={{ 
+          backgroundColor: themeColors.primary,
+          color: themeColors.primaryText
+        }}
+      >
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+            {/* Hero Content */}
+            <div>
+              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                Find {serviceLabel} in Your Area
+              </h1>
+              <p className="text-xl mb-8">
+                {directoryData.description || `Search our directory of trusted ${serviceLabel.toLowerCase()} near you`}
+              </p>
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex items-center">
+                  <FaMapMarkerAlt className="w-5 h-5 mr-2" />
+                  <span>Nationwide Coverage</span>
+                </div>
+                <div className="flex items-center">
+                  <FaSearch className="w-5 h-5 mr-2" />
+                  <span>Easy to Use</span>
+                </div>
+                <div className="flex items-center">
+                  <FaMobileAlt className="w-5 h-5 mr-2" />
+                  <span>Mobile Friendly</span>
+                </div>
+                <div className="flex items-center">
+                  <FaClock className="w-5 h-5 mr-2" />
+                  <span>24/7 Access</span>
+                </div>
+              </div>
+            </div>
             
-            <p className="text-xl text-gray-700 mb-8">
-              {directoryData.description || `Find verified ${serviceLabel.toLowerCase()} in your area quickly and easily.`}
-            </p>
-            
-            {/* Search Form Section */}
-            <div className="bg-white p-8 rounded-lg shadow-lg">
-              <h2 className="text-2xl font-semibold mb-6 text-center" style={{ color: themeColors.primary }}>
-                Find a {serviceLabel.slice(0, -1)} Near You
+            {/* Search Form */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+                Find {serviceLabel} Near You
               </h2>
               
-              <SearchComponentWrapper 
-                slug={params.slug} 
-                directoryData={directoryData}
-                themeColors={themeColors}
-              />
+              {/* Render SearchComponentWrapper if available */}
+              {SearchFormComponent ? (
+                <SearchComponentWrapper
+                  slug={params.slug}
+                  directoryData={directoryData}
+                  themeColors={themeColors}
+                />
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-center">
+                  <p className="text-gray-600">Search functionality is coming soon for this directory.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -301,12 +324,19 @@ export default async function DirectoryPage({ params }: DirectoryPageProps) {
       {/* Main Content Section */}
       <section className="py-16">
         <div className="container mx-auto px-4">
+          {/* Check if a ListWrapperComponent exists before rendering */}
           {ListWrapperComponent && (
-            <ListWrapperComponent 
-              slug={params.slug} 
-              directoryData={directoryData}
-              themeColors={themeColors}
-            />
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-2xl font-semibold mb-6">
+                {directoryData.name} Results
+              </h2>
+              <ListWrapperComponent 
+                slug={params.slug} 
+                directoryData={directoryData}
+                themeColors={themeColors}
+                searchParams={null}
+              />
+            </div>
           )}
         </div>
       </section>
