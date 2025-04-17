@@ -29,7 +29,7 @@ export default function SearchArea({
   } | null>(null);
   
   // State for loading status (managed here to communicate with form)
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   
   // Get the appropriate components from the registry based on directory features
   const SearchFormComponent = directoryData ? getSearchFormComponent(directoryData) : null;
@@ -43,6 +43,12 @@ export default function SearchArea({
   useEffect(() => {
     console.log('[SEARCH-DEBUG] SearchArea searchParams updated:', searchParams);
   }, [searchParams]);
+  
+  // Function to handle loading state changes from NotaryList
+  const handleLoadingChange = (loading: boolean) => {
+    console.log('[SEARCH-DEBUG] SearchArea loading state updated:', loading);
+    setIsLoading(loading);
+  };
   
   // Handle search form submission by updating search parameters
   const handleSearch = (coordinates: Coordinates, filters: SearchFilters) => {
@@ -94,7 +100,7 @@ export default function SearchArea({
             directoryData={directoryData}
             themeColors={themeColors}
             searchParams={searchParams}
-            setIsLoading={setIsLoading}
+            onLoadingChange={handleLoadingChange}
           />
         </div>
       )}

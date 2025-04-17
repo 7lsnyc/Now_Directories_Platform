@@ -24,7 +24,7 @@ interface NotaryListProps {
     coordinates: Coordinates;
     filters: SearchFilters;
   } | null;
-  setIsLoading?: (isLoading: boolean) => void;
+  onLoadingChange?: (loading: boolean) => void;
 }
 
 /**
@@ -36,7 +36,7 @@ export default function NotaryList({
   directoryData,
   themeColors,
   searchParams,
-  setIsLoading
+  onLoadingChange
 }: NotaryListProps) {
   // State
   const [notaries, setNotaries] = useState<Notary[]>([]);
@@ -132,6 +132,7 @@ export default function NotaryList({
       console.warn('[SEARCH-DEBUG] performSearch: No coordinates provided.');
       setError('Cannot search without valid coordinates.');
       setLoading(false);
+      onLoadingChange?.(false);
       setSearchPerformed(true); // Mark as attempted
       setFilteredNotaries([]); // Clear results
       return;
@@ -142,6 +143,7 @@ export default function NotaryList({
       console.error('[SEARCH-DEBUG] performSearch: Supabase client not ready.');
       setError('Database connection not ready. Please wait a moment.');
       setLoading(false);
+      onLoadingChange?.(false);
       setSearchPerformed(true); // Mark as attempted even if client wasn't ready
       setFilteredNotaries([]); // Clear results if client fails
       return;
@@ -149,6 +151,7 @@ export default function NotaryList({
 
     console.log('[SEARCH-DEBUG] NotaryList.performSearch executing with:', { coordinates, filters });
     setLoading(true);
+    onLoadingChange?.(true);
     setError(null);
     setFilteredNotaries([]); // Clear previous results before new search
 
@@ -209,9 +212,10 @@ export default function NotaryList({
       setFilteredNotaries([]); // Clear results on error
     } finally {
       setLoading(false);
+      onLoadingChange?.(false);
       setSearchPerformed(true); // Mark search as completed (or attempted)
     }
-  }, [supabase, slug]);
+  }, [supabase, slug, onLoadingChange]);
 
   // useEffect to trigger search when parameters change
   useEffect(() => {
@@ -226,7 +230,7 @@ export default function NotaryList({
       
       // Start loading state
       setLoading(true);
-      if (setIsLoading) setIsLoading(true);
+      if (onLoadingChange) onLoadingChange(true);
       
       // Execute search with the new parameters
       performSearch(searchParams.coordinates, searchParams.filters);
@@ -236,7 +240,7 @@ export default function NotaryList({
       setSearchPerformed(false);
       setError(null);
       setLoading(false);
-      if (setIsLoading) setIsLoading(false);
+      if (onLoadingChange) onLoadingChange(false);
     } else if (searchParams && !searchParams.coordinates) {
       // Handle case where search was requested without coordinates
       console.warn("[SEARCH-DEBUG] Search requested but no coordinates available.");
@@ -244,16 +248,16 @@ export default function NotaryList({
       setSearchPerformed(true);
       setError("Please provide a valid location for the search.");
       setLoading(false);
-      if (setIsLoading) setIsLoading(false);
+      if (onLoadingChange) onLoadingChange(false);
     } else if (!supabase) {
       // Handle case where Supabase client failed to initialize
       setError("Database connection unavailable. Please refresh.");
       setFilteredNotaries([]);
       setSearchPerformed(true);
       setLoading(false);
-      if (setIsLoading) setIsLoading(false);
+      if (onLoadingChange) onLoadingChange(false);
     }
-  }, [searchParams, supabase, performSearch, setIsLoading]);
+  }, [searchParams, supabase, performSearch, onLoadingChange]);
 
   // Primary color for UI elements
   const primaryColor = themeColors?.primary || '#3B82F6';
