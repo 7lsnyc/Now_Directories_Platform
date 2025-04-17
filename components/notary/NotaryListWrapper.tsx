@@ -3,6 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useDirectory } from '@/contexts/directory/DirectoryContext';
+import { SearchFilters } from './NotarySearchForm';
 
 /**
  * Dynamically import the NotaryList component to reduce initial bundle size
@@ -78,6 +79,12 @@ export default function NotaryListWrapper({ slug }: NotaryListWrapperProps) {
   // State to ensure client-side rendering only
   const [isClient, setIsClient] = useState(false);
   
+  // Create state for search parameters
+  const [searchParams, setSearchParams] = useState<{
+    coordinates: { latitude: number; longitude: number };
+    filters: SearchFilters;
+  } | null>(null);
+  
   // Access directory data from context
   const { directory, themeColors } = useDirectory();
   
@@ -92,6 +99,11 @@ export default function NotaryListWrapper({ slug }: NotaryListWrapperProps) {
     console.warn(`[NotaryListWrapper] Slug mismatch: ${slug} vs ${directory.directory_slug}`);
   }
   
+  // Handle search submission
+  const handleSearch = (coordinates: { latitude: number; longitude: number }, filters: SearchFilters) => {
+    setSearchParams({ coordinates, filters });
+  };
+  
   // Use suspense to handle the loading state
   // Only render the full component on the client side to avoid hydration errors
   return (
@@ -101,6 +113,7 @@ export default function NotaryListWrapper({ slug }: NotaryListWrapperProps) {
           slug={slug} 
           directoryData={directory} 
           themeColors={themeColors}
+          searchParams={searchParams}
         />
       ) : (
         <NotaryListPlaceholder />
