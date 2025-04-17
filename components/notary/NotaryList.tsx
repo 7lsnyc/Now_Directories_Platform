@@ -199,7 +199,7 @@ export default function NotaryList({
         setNotaries(notariesWithMiles);
       }
     } catch (err) {
-      console.error('[SEARCH-DEBUG] Supabase query error:', err);
+      console.error('[SEARCH-DEBUG] Supabase RPC Error Object:', err);
       
       // Set a user-friendly error message
       setError(err instanceof Error 
