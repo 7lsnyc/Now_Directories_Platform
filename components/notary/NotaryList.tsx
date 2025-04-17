@@ -123,47 +123,18 @@ export default function NotaryList({
   }, [supabase, supabaseLoading, slug]);
 
   /**
-   * Calculate the distance between two coordinate points
-   */
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371; // Radius of the earth in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c;
-  };
-
-  /**
-   * Convert kilometers to miles
-   */
-  const kmToMiles = (km: number): number => {
-    return km * 0.621371;
-  };
-
-  /**
-   * Convert miles to kilometers
-   */
-  const milesToKm = (miles: number): number => {
-    return miles / 0.621371;
-  };
-
-  /**
    * Fetches and filters notaries based on coordinates and filters.
-   * Updated to remove the non-existent 'is_active' filter.
+   * Uses server-side PostGIS spatial queries for performance.
    */
   const performSearch = useCallback(async (coordinates: Coordinates | null, filters: SearchFilters) => {
     // Ensure coordinates are provided before proceeding
     if (!coordinates) {
-        console.warn('[SEARCH-DEBUG] performSearch: No coordinates provided.');
-        setError('Cannot search without valid coordinates.');
-        setLoading(false);
-        setSearchPerformed(true); // Mark as attempted
-        setFilteredNotaries([]); // Clear results
-        return;
+      console.warn('[SEARCH-DEBUG] performSearch: No coordinates provided.');
+      setError('Cannot search without valid coordinates.');
+      setLoading(false);
+      setSearchPerformed(true); // Mark as attempted
+      setFilteredNotaries([]); // Clear results
+      return;
     }
 
     // Ensure Supabase client is available
@@ -182,85 +153,64 @@ export default function NotaryList({
     setFilteredNotaries([]); // Clear previous results before new search
 
     try {
-      const radiusKm = milesToKm(filters.maxDistance);
-
-      console.log('[SEARCH-DEBUG] Executing Supabase query with parameters:', {
-        directory_slug: slug,
-        radiusKm,
+      console.log('[SEARCH-DEBUG] Executing PostGIS spatial query with parameters:', {
         lat: coordinates.latitude,
         lng: coordinates.longitude,
-        serviceType: filters.serviceType,
-        minRating: filters.minimumRating ? 3.5 : 0
+        radius_miles: filters.maxDistance,
+        dir_slug: slug,
+        min_rating: filters.minimumRating ? 3.5 : null,
+        service_type: filters.serviceType || null
       });
 
-      // --- Query Starts ---
-      let query = supabase
-        .from('notaries') // Target the 'notaries' table
-        .select('*')      // Select all columns for now
-        .eq('directory_slug', slug); // Filter by the directory slug
-
-      // ** REMOVED FILTER: .eq('is_active', true) ** -> This column does not exist
-
-      // Apply optional service type filter
-      if (filters.serviceType) {
-        query = query.contains('services', [filters.serviceType]);
-      }
-
-      // Apply optional minimum rating filter
-      if (filters.minimumRating) {
-        // Schema confirms 'rating' column exists
-        query = query.gte('rating', 3.5);
-      }
-      // --- Query Ends ---
-
-      const { data, error: queryError } = await query;
+      // Call the database function directly using RPC
+      // This offloads all spatial calculations to the database
+      const { data, error: queryError } = await supabase.rpc('nearby_notaries', {
+        lat: coordinates.latitude,
+        lng: coordinates.longitude,
+        radius_miles: filters.maxDistance,
+        dir_slug: slug,
+        min_rating: filters.minimumRating ? 3.5 : null,
+        service_type: filters.serviceType || null
+      });
 
       if (queryError) {
         // Throw query errors to be caught by the main catch block
+        console.error('[SEARCH-DEBUG] Database function error:', queryError);
         throw queryError;
       }
 
       if (!data || data.length === 0) {
-        console.log('[SEARCH-DEBUG] No matching notaries found in DB for slug/filters.');
+        console.log('[SEARCH-DEBUG] No matching notaries found within radius.');
         setFilteredNotaries([]);
       } else {
-         console.log(`[SEARCH-DEBUG] Initial query returned ${data.length} notaries before distance filtering`);
-         // Calculate distance and filter client-side
-         const notariesWithDistance = data.map(notary => {
-           const lat = typeof notary.latitude === 'number' ? notary.latitude : 0;
-           const lon = typeof notary.longitude === 'number' ? notary.longitude : 0;
-           const distance = calculateDistance(
-             coordinates.latitude,
-             coordinates.longitude,
-             lat,
-             lon
-           );
-           return {
-             ...notary,
-             // Handle case where distance calculation might return Infinity
-             distance: Number.isFinite(distance) ? kmToMiles(distance) : Infinity
-           };
-         });
-
-         // Filter by distance and sort
-         const filtered = notariesWithDistance
-           .filter(notary => typeof notary.distance === 'number' && notary.distance <= filters.maxDistance)
-           .sort((a, b) => (a.distance as number) - (b.distance as number));
-
-         console.log(`[SEARCH-DEBUG] After distance filtering, ${filtered.length} notaries within ${filters.maxDistance} miles`);
-         setFilteredNotaries(filtered);
+        console.log(`[SEARCH-DEBUG] Found ${data.length} notaries within ${filters.maxDistance} miles`);
+        
+        // Process the results - convert distance_meters to miles for display
+        const notariesWithMiles = data.map((notary: any) => ({
+          ...notary,
+          // Convert meters to miles for display
+          distance: notary.distance_meters / 1609.34
+        }));
+        
+        // No need to filter by distance or sort - the database already did that
+        setFilteredNotaries(notariesWithMiles);
+        
+        // Save all matched results for potential broader searches
+        setNotaries(notariesWithMiles);
       }
-
     } catch (err) {
       console.error('[SEARCH-DEBUG] Supabase query error:', err);
+      
       // Set a user-friendly error message
-      setError(err instanceof Error ? `Search failed: ${err.message}` : 'An unknown error occurred during search.');
+      setError(err instanceof Error 
+        ? `Search failed: ${err.message}` 
+        : 'An error occurred while searching for notaries. Please try again.');
+        
       setFilteredNotaries([]); // Clear results on error
     } finally {
       setLoading(false);
       setSearchPerformed(true); // Mark search as completed (or attempted)
     }
-    // Dependencies for useCallback: supabase client and the slug used in the query
   }, [supabase, slug]);
 
   // useEffect to trigger search when parameters change
