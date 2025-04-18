@@ -3,7 +3,7 @@
 import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import { geocodeAddress, getAddressFromCoordinates } from '@/utils/geocoding';
 import { getProviderConfigFromSlug } from '@/types/provider';
-import { Coordinates, SearchFilters } from '@/lib/providerSearch';
+import { Coordinates, SearchFilters } from '@/lib/providerSearchClient';
 
 interface ProviderSearchFormProps {
   onSearch: (coordinates: Coordinates, filters: SearchFilters) => void;
