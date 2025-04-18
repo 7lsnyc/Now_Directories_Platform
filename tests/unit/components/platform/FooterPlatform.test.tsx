@@ -61,6 +61,6 @@ describe('FooterPlatform', () => {
     const { container } = render(<FooterPlatform />);
     const grid = container.querySelector('.grid');
     expect(grid).toHaveClass('grid-cols-1');
-    expect(grid).toHaveClass('md:grid-cols-4');
+    expect(grid).toHaveClass('lg:grid-cols-4');
   });
 });

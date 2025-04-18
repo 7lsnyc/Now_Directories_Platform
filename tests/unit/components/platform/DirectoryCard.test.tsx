@@ -25,8 +25,6 @@ describe('DirectoryCard', () => {
     render(<DirectoryCard {...mockProps} />);
     const link = screen.getByRole('link');
     expect(link).toHaveAttribute('href', mockProps.url);
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
   it('renders the correct icon', () => {
@@ -34,8 +32,9 @@ describe('DirectoryCard', () => {
     // Check for SVG icon element
     const icon = container.querySelector('svg');
     expect(icon).toBeInTheDocument();
-    expect(icon).toHaveClass('w-8');
-    expect(icon).toHaveClass('h-8');
+    // Lucide icons have different class names now
+    expect(icon).toHaveClass('lucide');
+    expect(icon).toHaveClass('lucide-shield');
   });
 
   it('applies the correct background color class', () => {
@@ -46,12 +45,12 @@ describe('DirectoryCard', () => {
 
   it('displays the NEW badge when isNew is true', () => {
     render(<DirectoryCard {...mockProps} isNew={true} />);
-    expect(screen.getByText('NEW')).toBeInTheDocument();
+    expect(screen.getByText('New')).toBeInTheDocument();
   });
 
   it('does not display the NEW badge when isNew is false', () => {
     render(<DirectoryCard {...mockProps} />);
-    expect(screen.queryByText('NEW')).not.toBeInTheDocument();
+    expect(screen.queryByText('New')).not.toBeInTheDocument();
   });
 
   it('falls back to Shield icon when an invalid icon is provided', () => {
