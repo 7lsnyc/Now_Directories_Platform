@@ -85,15 +85,13 @@ describe('Component Registry', () => {
       const notaryComponent = getSearchFormComponent(notaryDirectory);
       expect(notaryComponent).not.toBeUndefined();
       
-      // For plumber directory, we expect undefined (since we haven't registered that component yet)
-      // In a real implementation, we would register plumber_search in the registry
+      // For plumber directory, we expect a component (using the same component as notary for testing)
       const plumberComponent = getSearchFormComponent(plumberDirectory);
-      expect(plumberComponent).toBeUndefined();
+      expect(plumberComponent).not.toBeUndefined();
       
-      // For lawyer directory, we expect undefined (since we haven't registered that component yet)
-      // In a real implementation, we would register lawyer_search in the registry
+      // For lawyer directory, we expect a component (since we've added it to the registry)
       const lawyerComponent = getSearchFormComponent(lawyerDirectory);
-      expect(lawyerComponent).toBeUndefined();
+      expect(lawyerComponent).not.toBeUndefined();
     });
   });
 
@@ -120,12 +118,13 @@ describe('Component Registry', () => {
       const notaryComponent = getListWrapperComponent(notaryDirectory);
       expect(notaryComponent).not.toBeUndefined();
       
-      // For other directories, we expect undefined until we register their components
+      // For plumber directory, we expect a component (using the same component as notary for testing)
       const plumberComponent = getListWrapperComponent(plumberDirectory);
-      expect(plumberComponent).toBeUndefined();
+      expect(plumberComponent).not.toBeUndefined();
       
+      // For lawyer directory, we expect a component since it's now registered
       const lawyerComponent = getListWrapperComponent(lawyerDirectory);
-      expect(lawyerComponent).toBeUndefined();
+      expect(lawyerComponent).not.toBeUndefined();
     });
   });
 

@@ -30,17 +30,13 @@ export interface BaseListWrapperProps {
 // Lazy loaded component imports to avoid circular dependencies
 import dynamic from 'next/dynamic';
 
-// Notary-specific components
-const NotarySearchForm = dynamic(() => import('@/components/notary/NotarySearchForm'));
-const NotaryList = dynamic(() => import('@/components/notary/NotaryList'));
+// Provider-agnostic components (replaces notary-specific components)
+const ProviderSearchForm = dynamic(() => import('@/components/provider/ProviderSearchForm'));
+const ProviderList = dynamic(() => import('@/components/provider/ProviderList'));
 
-// Add other directory-specific components here as they are developed
-// Example:
-// const LawyerSearchForm = dynamic(() => import('@/components/lawyer/LawyerSearchForm'));
-// const LawyerList = dynamic(() => import('@/components/lawyer/LawyerList'));
-
-// For testing the multi-tenant architecture, we're directly reusing notary components
-// In a real implementation, we would create plumber-specific components
+// Legacy notary-specific components (kept for reference, will be removed later)
+// const NotarySearchForm = dynamic(() => import('@/components/notary/NotarySearchForm'));
+// const NotaryList = dynamic(() => import('@/components/notary/NotaryList'));
 
 // Type-safe registry type definitions using React.ComponentType with generic interface
 type SearchFormComponentType = React.ComponentType<any>;
@@ -54,10 +50,11 @@ type ListWrapperComponentType = React.ComponentType<any>;
  * 3. Add a mapping here linking the feature to the component
  */
 export const searchFormRegistry: Record<string, SearchFormComponentType> = {
-  'notary_search': NotarySearchForm,
-  'plumber_search': NotarySearchForm, // Reusing notary component for testing
-  // Add more mappings as new directories are added:
-  // 'lawyer_search': LawyerSearchForm,
+  // Use the provider-agnostic search form for all directory types
+  'notary_search': ProviderSearchForm,
+  'plumber_search': ProviderSearchForm,
+  'lawyer_search': ProviderSearchForm,
+  // Add more mappings as needed using the same ProviderSearchForm component
 };
 
 /**
@@ -68,10 +65,11 @@ export const searchFormRegistry: Record<string, SearchFormComponentType> = {
  * 3. Add a mapping here linking the feature to the component
  */
 export const listWrapperRegistry: Record<string, ListWrapperComponentType> = {
-  'notary_search': NotaryList,
-  'plumber_search': NotaryList, // Reusing notary component for testing
-  // Add more mappings as new directories are added:
-  // 'lawyer_search': LawyerList,
+  // Use the provider-agnostic list for all directory types
+  'notary_search': ProviderList,
+  'plumber_search': ProviderList,
+  'lawyer_search': ProviderList,
+  // Add more mappings as needed using the same ProviderList component
 };
 
 /**
