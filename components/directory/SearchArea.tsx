@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Directory, DirectoryThemeColors } from '@/types/directory';
 import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry/componentRegistry';
-import { Coordinates, SearchFilters } from '@/lib/providerSearch';
+import { Coordinates, SearchFilters } from '@/lib/providerSearchClient';
 
 interface SearchAreaProps {
   slug: string;
