@@ -9,7 +9,7 @@ import { useSupabase } from '@/lib/supabase/clientProvider';
 import { SearchFilters } from './NotarySearchForm';
 
 // Types
-type Notary = Database['public']['Tables']['notaries']['Row'];
+type Notary = Database['public']['Tables']['notaries_new']['Row'];
 
 interface Coordinates {
   latitude: number;
@@ -67,7 +67,7 @@ export default function NotaryList({
     const checkNotaryData = async () => {
       try {
         const { data, error, count } = await supabase
-          .from('notaries')
+          .from('notaries_new')
           .select('*', { count: 'exact' })
           .eq('directory_slug', slug);
         
@@ -94,7 +94,7 @@ export default function NotaryList({
     const loadAvailableServices = async () => {
       try {
         const { data, error } = await supabase
-          .from('notaries')
+          .from('notaries_new')
           .select('services')
           .eq('directory_slug', slug);
         
@@ -108,7 +108,7 @@ export default function NotaryList({
             .flatMap(notary => notary.services || [])
             .filter(Boolean) as string[];
           
-          const uniqueServicesList = allServices.filter((service, index, self) => 
+          const uniqueServicesList = allServices.filter((service: string, index: number, self: string[]) => 
             self.indexOf(service) === index
           );
           setUniqueServices(uniqueServicesList);
@@ -189,17 +189,14 @@ export default function NotaryList({
         console.log(`[SEARCH-DEBUG] Found ${data.length} notaries within ${filters.maxDistance} miles`);
         
         // Process the results - convert distance_meters to miles for display
-        const notariesWithMiles = data.map((notary: any) => ({
+        const resultsWithMiles = data.map((notary: any) => ({
           ...notary,
           // Convert meters to miles for display
           distance: notary.distance_meters / 1609.34
         }));
         
-        // No need to filter by distance or sort - the database already did that
-        setFilteredNotaries(notariesWithMiles);
-        
-        // Save all matched results for potential broader searches
-        setNotaries(notariesWithMiles);
+        setFilteredNotaries(resultsWithMiles);
+        setNotaries(resultsWithMiles);
       }
     } catch (err) {
       console.error('[SEARCH-DEBUG] Supabase RPC Error Object:', err);
