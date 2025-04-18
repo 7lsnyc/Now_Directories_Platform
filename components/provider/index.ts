@@ -7,5 +7,5 @@
 export { default as ProviderList } from './ProviderList';
 export { default as ProviderSearchForm } from './ProviderSearchForm';
 
-// Re-export types from providerSearch for convenience
-export type { Coordinates, SearchFilters } from '@/lib/providerSearch';
+// Re-export types from providerSearchClient for convenience
+export type { Coordinates, SearchFilters } from '@/lib/providerSearchClient';
