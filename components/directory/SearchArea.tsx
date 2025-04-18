@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Directory, DirectoryThemeColors } from '@/types/directory';
 import { getSearchFormComponent, getListWrapperComponent } from '@/lib/registry/componentRegistry';
-import { Coordinates, SearchFilters } from '@/components/notary/NotarySearchForm';
+import { Coordinates, SearchFilters } from '@/lib/providerSearch';
 
 interface SearchAreaProps {
   slug: string;
@@ -35,26 +35,25 @@ export default function SearchArea({
   const SearchFormComponent = directoryData ? getSearchFormComponent(directoryData) : null;
   const ListWrapperComponent = directoryData ? getListWrapperComponent(directoryData) : null;
   
-  // The available services should ideally come from the database
-  // For now, we'll hardcode common notary services
-  const availableServices = ['Mobile Notary', 'Remote Online Notary', 'Office Notary'];
+  // Default available services - in a real implementation, these would come from
+  // the database based on the provider type, or from the provider configuration
+  const availableServices = [
+    'Mobile Notary', 
+    'Remote Online Notary', 
+    'Office Notary'
+  ];
   
-  // Log whenever searchParams changes for debugging
-  useEffect(() => {
-    console.log('[SEARCH-DEBUG] SearchArea searchParams updated:', searchParams);
-  }, [searchParams]);
-  
-  // Function to handle loading state changes from NotaryList
+  /**
+   * Handler for when the loading state changes in the child component
+   */
   const handleLoadingChange = (loading: boolean) => {
-    console.log('[SEARCH-DEBUG] SearchArea loading state updated:', loading);
     setIsLoading(loading);
   };
   
-  // Handle search form submission by updating search parameters
+  /**
+   * Handler for when a search is performed in the search form
+   */
   const handleSearch = (coordinates: Coordinates, filters: SearchFilters) => {
-    console.log('[SEARCH-DEBUG] SearchArea received search:', { coordinates, filters });
-    
-    // Update search parameters - this will trigger the list component to fetch data
     setSearchParams({ coordinates, filters });
   };
   
@@ -79,6 +78,7 @@ export default function SearchArea({
         
         <SearchFormComponent
           slug={slug}
+          directorySlug={slug}
           directoryData={directoryData}
           themeColors={themeColors}
           availableServices={availableServices}
