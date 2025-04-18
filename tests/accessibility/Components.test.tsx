@@ -51,11 +51,12 @@ describe('Directory Components Accessibility', () => {
     const footer = screen.getByRole('contentinfo');
     expect(footer).toHaveAttribute('aria-label', 'Site Footer');
     
-    // Check if links have appropriate accessibility attributes
+    // Check if links have appropriate accessibility attributes for the internal link
     const link = screen.getByText('Now Directories');
-    expect(link).toHaveAttribute('aria-label', 'Visit Now Directories platform (opens in new tab)');
-    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(link).toHaveAttribute('target', '_blank');
-    expect(link).toHaveAttribute('href', 'https://nowdirectories.com');
+    expect(link).toHaveAttribute('aria-label', 'Visit Now Directories platform home page');
+    // No longer expecting external link attributes
+    expect(link).not.toHaveAttribute('rel', 'noopener noreferrer');
+    expect(link).not.toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('href', '/');
   });
 });

@@ -87,8 +87,29 @@ function GenericDirectoryContent({ directory }: { directory: Directory }) {
  */
 async function getDirectoryData(slug: string): Promise<Directory | null> {
   try {
+    console.log(`🔍 DIRECTORY PAGE - Fetching directory data for slug: '${slug}'`);
+    
     const supabase = createServerClient();
     
+    // First, let's check if the slug exists in our provider map configuration
+    const { isValidProviderSlug } = await import('@/types/provider');
+    const isValidSlug = isValidProviderSlug(slug);
+    console.log(`🔍 DIRECTORY PAGE - Slug '${slug}' is ${isValidSlug ? 'valid' : 'invalid'} in provider map`);
+    
+    // DEBUG: List all available directories to see what's actually in the database
+    const { data: allDirectories, error: listError } = await supabase
+      .from('directories')
+      .select('name, directory_slug, is_active')
+      .order('name');
+      
+    if (listError) {
+      console.error('❌ DIRECTORY PAGE - Error listing all directories:', listError);
+    } else {
+      console.log('🔍 DIRECTORY PAGE - All directories in database:', JSON.stringify(allDirectories, null, 2));
+    }
+    
+    // Now try to get the specific directory
+    console.log(`🔍 DIRECTORY PAGE - Querying for directory_slug='${slug}' AND is_active=true`);
     const { data, error } = await supabase
       .from('directories')
       .select('*')
@@ -97,15 +118,19 @@ async function getDirectoryData(slug: string): Promise<Directory | null> {
       .maybeSingle();
     
     if (error) {
+      console.error(`❌ DIRECTORY PAGE - Supabase error for slug '${slug}':`, error);
       return null;
     }
     
     if (!data) {
+      console.log(`❌ DIRECTORY PAGE - No directory data found for slug '${slug}'`);
       return null;
     }
     
+    console.log(`✅ DIRECTORY PAGE - Successfully retrieved directory data for '${slug}'`, data);
     return data as Directory;
   } catch (error) {
+    console.error(`❌ DIRECTORY PAGE - Exception in getDirectoryData for slug '${slug}':`, error);
     return null;
   }
 }

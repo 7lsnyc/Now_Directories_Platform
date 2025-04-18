@@ -15,11 +15,9 @@ export default function DirectoryFooter({ directory }: { directory: Directory })
         <p>
           {currentYear} {directory.name}. Powered by{' '}
           <a 
-            href="https://nowdirectories.com" 
+            href="/" 
             className="text-theme-accent hover:underline"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Visit Now Directories platform (opens in new tab)"
+            aria-label="Visit Now Directories platform home page"
           >
             Now Directories
           </a>

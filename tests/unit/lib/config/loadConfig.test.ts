@@ -1,111 +1,145 @@
-import fs from 'fs';
-import path from 'path';
-import { loadConfig } from '@/lib/config/loadConfig';
+import { loadConfig, defaultConfig } from '@/lib/config/loadConfig';
+import { createServerClient } from '@/lib/supabase/server';
+
+// Mock the Supabase client
+jest.mock('@/lib/supabase/server', () => ({
+  createServerClient: jest.fn()
+}));
 
 describe('loadConfig', () => {
-  // Mock implementation for testing
-  const mockConfig = {
+  // Mock directory data for testing
+  const mockDirectoryData = {
+    directory_slug: 'notary',
     name: 'notary',
     title: 'Notary Finder Now',
-    description: 'Find qualified notaries in your area offering mobile, 24-hour, and free services.',
-    logo: {
-      path: '/logos/notary-logo.svg',
-      alt: 'Notary Finder Now'
-    },
-    theme: {
-      name: 'blue-notary',
-      colors: {
-        primary: '#1e40af',
-        secondary: '#1e3a8a',
-        accent: '#f97316'
-      }
-    },
-    hero: {
-      heading: 'Find a Qualified Notary Near You — Now!',
-      subheading: 'Connect with mobile, 24-hour, and free notary services in your area instantly.'
-    },
-    serviceTypes: [
-      'Mobile Notaries',
-      '24-Hour Availability',
-      'Remote Notaries',
-      'Free Services'
-    ],
+    description: 'Find qualified notaries in your area',
+    logo_path: '/logos/notary-logo.svg',
+    logo_alt: 'Notary Finder Now',
+    theme_name: 'blue-notary',
+    brand_color_primary: '#1e40af',
+    brand_color_secondary: '#1e3a8a',
+    brand_color_accent: '#f97316',
+    hero_heading: 'Find a Qualified Notary Near You',
+    hero_subheading: 'Connect with mobile notary services',
+    service_types: ['Mobile Notary', '24-Hour Notary'],
     navigation: {
       header: {
         ctaButton: {
-          text: 'Request Featured Listing',
-          url: '/request-listing'
+          text: 'Get Listed',
+          url: '/get-listed'
         }
       },
       footer: {
         quickLinks: [
           { text: 'Home', url: '/' },
-          { text: 'Find a Notary', url: '/search' }
+          { text: 'About', url: '/about' }
         ],
         services: [
-          { text: 'Mobile Notaries', url: '/services/mobile' }
+          { text: 'Mobile Notary', url: '/services/mobile' }
         ],
         support: [
           { text: 'FAQ', url: '/faq' }
         ]
       }
     },
-    seo: {
-      title: 'Notary Finder Now - Find Qualified Mobile Notaries Near You',
-      description: 'Connect with mobile, 24-hour, and free notary services in your area.'
-    },
+    seo_title: 'Notary Finder Now - Find Notaries Near You',
+    seo_description: 'Connect with mobile notary services in your area',
     features: {
       search: true,
       filter: true,
       sort: true,
       pagination: true
-    }
+    },
+    is_active: true
+  };
+
+  // Mock Supabase select response
+  const mockSupabaseSelect = jest.fn().mockReturnValue({
+    eq: jest.fn().mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        single: jest.fn().mockReturnValue({
+          data: mockDirectoryData,
+          error: null
+        })
+      })
+    })
+  });
+
+  // Mock Supabase client
+  const mockSupabaseClient = {
+    from: jest.fn().mockReturnValue({
+      select: mockSupabaseSelect
+    })
   };
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
-    (fs.readFileSync as jest.Mock).mockReturnValue(JSON.stringify(mockConfig));
-    (path.resolve as jest.Mock).mockReturnValue('config/notary.json');
+    jest.clearAllMocks();
+    // Set up the mock Supabase client
+    (createServerClient as jest.Mock).mockReturnValue(mockSupabaseClient);
   });
 
-  it('should return the default config when no slug is provided', () => {
-    const config = loadConfig();
-    expect(config.name).toBe('default');
-    expect(fs.readFileSync).not.toHaveBeenCalled();
+  it('should return the default config when no slug is provided', async () => {
+    const config = await loadConfig();
+    expect(config).toEqual(defaultConfig);
+    expect(mockSupabaseClient.from).not.toHaveBeenCalled();
   });
 
-  it('should load config for valid slug', () => {
-    const config = loadConfig('notary');
+  it('should load config from Supabase for valid slug', async () => {
+    const config = await loadConfig('notary');
     
-    expect(path.resolve).toHaveBeenCalledWith(expect.any(String), 'config', 'notary.json');
-    expect(fs.existsSync).toHaveBeenCalled();
-    expect(fs.readFileSync).toHaveBeenCalledWith('config/notary.json', 'utf8');
+    // Verify Supabase was called correctly
+    expect(mockSupabaseClient.from).toHaveBeenCalledWith('directories');
+    expect(mockSupabaseSelect).toHaveBeenCalledWith('*');
     
+    // Verify the config contains the expected values
     expect(config.name).toBe('notary');
     expect(config.title).toBe('Notary Finder Now');
     expect(config.theme.name).toBe('blue-notary');
+    expect(config.theme.colors.primary).toBe('#1e40af');
   });
 
-  it('should return default config when slug file does not exist', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
-    
-    const config = loadConfig('nonexistent');
-    
-    expect(fs.existsSync).toHaveBeenCalled();
-    expect(fs.readFileSync).not.toHaveBeenCalled();
-    expect(config.name).toBe('default');
-  });
-
-  it('should return default config on error', () => {
-    (fs.readFileSync as jest.Mock).mockImplementation(() => {
-      throw new Error('Simulated error');
+  it('should return default config when directory not found in Supabase', async () => {
+    // Mock a Supabase response with no data
+    const noDataSupabaseSelect = jest.fn().mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockReturnValue({
+            data: null,
+            error: { message: 'No rows matched the query' }
+          })
+        })
+      })
     });
     
-    const config = loadConfig('notary');
+    (mockSupabaseClient.from as jest.Mock).mockReturnValue({
+      select: noDataSupabaseSelect
+    });
     
-    expect(fs.existsSync).toHaveBeenCalled();
-    expect(fs.readFileSync).toHaveBeenCalled();
-    expect(config.name).toBe('default');
+    const config = await loadConfig('nonexistent');
+    
+    expect(mockSupabaseClient.from).toHaveBeenCalledWith('directories');
+    expect(config).toEqual(defaultConfig);
+  });
+
+  it('should return default config on error', async () => {
+    // Mock a Supabase error
+    const errorSupabaseSelect = jest.fn().mockReturnValue({
+      eq: jest.fn().mockReturnValue({
+        eq: jest.fn().mockReturnValue({
+          single: jest.fn().mockImplementation(() => {
+            throw new Error('Supabase connection error');
+          })
+        })
+      })
+    });
+    
+    (mockSupabaseClient.from as jest.Mock).mockReturnValue({
+      select: errorSupabaseSelect
+    });
+    
+    const config = await loadConfig('notary');
+    
+    expect(mockSupabaseClient.from).toHaveBeenCalledWith('directories');
+    expect(config).toEqual(defaultConfig);
   });
 });

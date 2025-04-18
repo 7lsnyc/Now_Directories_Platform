@@ -5,12 +5,27 @@ jest.mock('next/headers', () => ({
   })),
 }));
 
+// Mock middleware with a proper Map object
 jest.mock('../middleware', () => ({
-  domainMap: {
-    'notaryfindernow.com': 'notary',
-    'passporthelpnow.com': 'passport',
-    'nowdirectories.com': 'platform'
-  }
+  domainMap: new Map([
+    ['notaryfindernow.com', 'notary'],
+    ['passporthelpnow.com', 'passport'],
+    ['nowdirectories.com', 'platform']
+  ])
+}));
+
+// Mock server environment variables
+jest.mock('@/lib/env/server', () => ({
+  serverEnv: {
+    supabase: {
+      url: 'https://mock-supabase-url.supabase.co',
+      serviceRoleKey: 'mock-service-role-key',
+    },
+    defaultDirectorySlug: 'notaryfindernow',
+    enableAnalytics: false,
+    debugMode: true,
+  },
+  validateServerEnv: jest.fn().mockReturnValue({ isValid: true, missingVars: [] }),
 }));
 
 // Add these mocks before importing the modules

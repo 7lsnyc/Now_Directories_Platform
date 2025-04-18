@@ -119,12 +119,12 @@ export const defaultConfig: DirectoryConfig = {
 };
 
 /**
- * Loads configuration for a specific directory by slug
- * This function prioritizes fetching data from Supabase as the source of truth
+ * Core implementation of config loading logic
+ * This function is separate from the cached version to make testing easier
  * @param slug - The directory slug to load configuration for
  * @returns The directory configuration or default config if not found
  */
-export const loadConfig = cache(async function(slug?: string): Promise<DirectoryConfig> {
+export async function loadConfigImpl(slug?: string): Promise<DirectoryConfig> {
   // If no slug is provided, return the default config
   if (!slug) {
     return defaultConfig;
@@ -192,4 +192,13 @@ export const loadConfig = cache(async function(slug?: string): Promise<Directory
     console.error(`Error loading config for slug ${slug}:`, error);
     return defaultConfig;
   }
-});
+}
+
+/**
+ * Cached version of loadConfigImpl for use in React Server Components
+ * This wrapper ensures caching while allowing the core implementation
+ * to be tested separately
+ */
+export const loadConfig = typeof cache === 'function' 
+  ? cache(loadConfigImpl)  // Use React cache in production/development
+  : loadConfigImpl;       // Fall back to uncached version in test environment
