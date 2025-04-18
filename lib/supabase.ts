@@ -154,6 +154,7 @@ export type Database = {
           insurance_verified: boolean;
           background_check_verified: boolean;
           featured: boolean;
+          directory_slug: string;
         };
         Insert: {
           id?: string;
@@ -166,12 +167,12 @@ export type Database = {
           phone?: string | null;
           email?: string | null;
           website?: string | null;
-          services: string[];
-          rating?: number;
-          review_count?: number;
+          services?: string[];
+          rating: number;
+          review_count: number;
           review_summary?: string | null;
-          latitude?: number;
-          longitude?: number;
+          latitude: number;
+          longitude: number;
           last_updated?: string;
           about?: string;
           business_hours?: {
@@ -204,6 +205,7 @@ export type Database = {
           insurance_verified?: boolean;
           background_check_verified?: boolean;
           featured?: boolean;
+          directory_slug: string;
         };
         Update: {
           id?: string;
@@ -254,6 +256,164 @@ export type Database = {
           insurance_verified?: boolean;
           background_check_verified?: boolean;
           featured?: boolean;
+          directory_slug?: string;
+        };
+      },
+      notaries_new: {
+        Row: {
+          id: string; // UUID type in PostgreSQL
+          name: string;
+          created_at: string;
+          address: string;
+          city: string;
+          state: string;
+          zip: string;
+          phone: string | null;
+          email: string | null;
+          website: string | null;
+          services: string[];
+          rating: number;
+          review_count: number;
+          review_summary: string | null;
+          latitude: number;
+          longitude: number;
+          updated_at: string; // timestamptz in PostgreSQL
+          about: string | null;
+          business_hours: {
+            monday: string;
+            tuesday: string;
+            wednesday: string;
+            thursday: string;
+            friday: string;
+            saturday: string;
+            sunday: string;
+          } | null;
+          certifications: string[] | null;
+          languages: string[] | null;
+          pricing: {
+            price_info: string;
+          } | null;
+          place_id: string | null;
+          specialized_services: string[] | null;
+          remote_notary_states: string[] | null;
+          is_available_now: boolean | null;
+          accepts_online_booking: boolean | null;
+          starting_price: number | null;
+          price_info: string | null;
+          business_type: string | null;
+          service_radius_miles: number | null;
+          service_areas: string[] | null;
+          profile_image_url: string | null;
+          license_number: string | null;
+          license_expiry: string | null;
+          insurance_verified: boolean | null;
+          background_check_verified: boolean | null;
+          featured: boolean | null;
+          directory_slug: string;
+          // location field is omitted as it's a PostGIS geography type
+          // not easily representable in TypeScript
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          created_at?: string;
+          address: string;
+          city: string;
+          state: string;
+          zip: string;
+          phone?: string | null;
+          email?: string | null;
+          website?: string | null;
+          services?: string[];
+          rating: number;
+          review_count: number;
+          review_summary?: string | null;
+          latitude: number;
+          longitude: number;
+          updated_at?: string;
+          about?: string | null;
+          business_hours?: {
+            monday: string;
+            tuesday: string;
+            wednesday: string;
+            thursday: string;
+            friday: string;
+            saturday: string;
+            sunday: string;
+          } | null;
+          certifications?: string[] | null;
+          languages?: string[] | null;
+          pricing?: {
+            price_info: string;
+          } | null;
+          place_id?: string | null;
+          specialized_services?: string[] | null;
+          remote_notary_states?: string[] | null;
+          is_available_now?: boolean | null;
+          accepts_online_booking?: boolean | null;
+          starting_price?: number | null;
+          price_info?: string | null;
+          business_type?: string | null;
+          service_radius_miles?: number | null;
+          service_areas?: string[] | null;
+          profile_image_url?: string | null;
+          license_number?: string | null;
+          license_expiry?: string | null;
+          insurance_verified?: boolean | null;
+          background_check_verified?: boolean | null;
+          featured?: boolean | null;
+          directory_slug: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          created_at?: string;
+          address?: string;
+          city?: string;
+          state?: string;
+          zip?: string;
+          phone?: string | null;
+          email?: string | null;
+          website?: string | null;
+          services?: string[];
+          rating?: number;
+          review_count?: number;
+          review_summary?: string | null;
+          latitude?: number;
+          longitude?: number;
+          updated_at?: string;
+          about?: string | null;
+          business_hours?: {
+            monday: string;
+            tuesday: string;
+            wednesday: string;
+            thursday: string;
+            friday: string;
+            saturday: string;
+            sunday: string;
+          } | null;
+          certifications?: string[] | null;
+          languages?: string[] | null;
+          pricing?: {
+            price_info: string;
+          } | null;
+          place_id?: string | null;
+          specialized_services?: string[] | null;
+          remote_notary_states?: string[] | null;
+          is_available_now?: boolean | null;
+          accepts_online_booking?: boolean | null;
+          starting_price?: number | null;
+          price_info?: string | null;
+          business_type?: string | null;
+          service_radius_miles?: number | null;
+          service_areas?: string[] | null;
+          profile_image_url?: string | null;
+          license_number?: string | null;
+          license_expiry?: string | null;
+          insurance_verified?: boolean | null;
+          background_check_verified?: boolean | null;
+          featured?: boolean | null;
+          directory_slug?: string;
         };
       };
     };

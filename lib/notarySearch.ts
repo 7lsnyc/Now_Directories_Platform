@@ -38,12 +38,15 @@ export async function searchNotariesClientSide(params: NotarySearchParams): Prom
   try {
     // Fetch all notaries for the directory
     const { data, error } = await supabase
-      .from('notaries')
+      .from('notaries_new')
       .select('*')
       .eq('directory_slug', params.directorySlug);
-    
+      
     if (error) {
-      console.error('Error fetching notaries:', error);
+      throw new Error(`Supabase error: ${error.message}`);
+    }
+    
+    if (!data || data.length === 0) {
       return {
         notaries: [],
         totalCount: 0,
@@ -53,60 +56,50 @@ export async function searchNotariesClientSide(params: NotarySearchParams): Prom
       };
     }
     
-    // Filter and sort results client-side
-    let filteredData = data || [];
+    // Client-side distance calculation and filtering
+    let filteredData = data;
     
-    // Apply filters
-    if (params.serviceType) {
-      filteredData = filteredData.filter(notary => 
-        notary.services && notary.services.includes(params.serviceType || '')
-      );
-    }
-    
-    if (params.minimumRating && typeof params.minimumRating === 'number') {
-      filteredData = filteredData.filter(notary => 
-        notary.rating >= params.minimumRating!
-      );
-    }
-    
-    // Calculate distance and filter by radius if coordinates are provided
-    if (params.latitude && params.longitude) {
-      filteredData = filteredData.filter(notary => {
+    // Step 1: Filter by distance
+    if (params.latitude && params.longitude && params.radiusMiles) {
+      filteredData = data.filter(notary => {
         if (!notary.latitude || !notary.longitude) return false;
         
-        // Calculate distance using Haversine formula
-        const earthRadiusKm = 6371;
-        const dLat = degreesToRadians(notary.latitude - params.latitude);
-        const dLon = degreesToRadians(notary.longitude - params.longitude);
+        const distance = calculateDistance(
+          params.latitude,
+          params.longitude,
+          notary.latitude,
+          notary.longitude
+        );
         
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(degreesToRadians(params.latitude)) * Math.cos(degreesToRadians(notary.latitude)) * 
-          Math.sin(dLon/2) * Math.sin(dLon/2);
-        
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const distanceKm = earthRadiusKm * c;
-        const distanceMiles = distanceKm * 0.621371;
-        
-        // Store distance for sorting
-        (notary as any).distance = distanceMiles;
-        
-        return distanceMiles <= params.radiusMiles;
+        // Add distance for sorting and display
+        (notary as any).distance = distance;
+        return distance <= params.radiusMiles;
       });
-      
-      // Sort by distance
-      filteredData.sort((a, b) => (a as any).distance - (b as any).distance);
-    } else {
-      // Sort by rating
-      filteredData.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
     
-    // Apply pagination
+    // Step 2: Filter by service type if specified
+    if (params.serviceType) {
+      filteredData = filteredData.filter(
+        notary => notary.services && notary.services.includes(params.serviceType!)
+      );
+    }
+    
+    // Step 3: Filter by minimum rating if specified
+    if (params.minimumRating) {
+      filteredData = filteredData.filter(
+        notary => notary.rating >= params.minimumRating!
+      );
+    }
+    
+    // Sort by distance (nearest first)
+    filteredData.sort((a, b) => (a as any).distance - (b as any).distance);
+    
+    // Handle pagination
     const page = params.page || 0;
     const pageSize = params.pageSize || 10;
-    const startIndex = page * pageSize;
     const totalCount = filteredData.length;
     const totalPages = Math.ceil(totalCount / pageSize);
+    const startIndex = page * pageSize;
     
     const paginatedData = filteredData.slice(startIndex, startIndex + pageSize);
     
@@ -129,6 +122,23 @@ export async function searchNotariesClientSide(params: NotarySearchParams): Prom
   }
 }
 
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const earthRadiusKm = 6371;
+  const dLat = degreesToRadians(lat2 - lat1);
+  const dLon = degreesToRadians(lon2 - lon1);
+  
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(degreesToRadians(lat1)) * Math.cos(degreesToRadians(lat2)) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distanceKm = earthRadiusKm * c;
+  const distanceMiles = distanceKm * 0.621371;
+  
+  return distanceMiles;
+}
+
 function degreesToRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
@@ -145,62 +155,62 @@ export async function searchNotariesWithPostGIS(params: NotarySearchParams): Pro
     // Convert miles to meters for PostGIS (1 mile = 1609.34 meters)
     const radiusMeters = params.radiusMiles * 1609.34;
     
-    // Pagination parameters (default: page 0, 10 items per page)
+    // Get pagination parameters
     const page = params.page || 0;
     const pageSize = params.pageSize || 10;
-    const startIndex = page * pageSize;
-    const endIndex = startIndex + pageSize - 1;
     
-    // Build the query
+    // Skip value for pagination
+    const skip = page * pageSize;
+    
+    console.log('PostGIS search with params:', {
+      lat: params.latitude,
+      lng: params.longitude,
+      radiusMiles: params.radiusMiles,
+      directorySlug: params.directorySlug,
+      serviceType: params.serviceType
+    });
+    
+    // If PostGIS is available, use spatial query
     let query = supabase
-      .from('notaries')
+      .from('notaries_new')
       .select('*', { count: 'exact' })
       .eq('directory_slug', params.directorySlug);
-    
-    // Apply spatial filter when coordinates are provided
-    if (params.latitude && params.longitude) {
-      // ST_DWithin filter: find points within the specified radius
-      // ST_MakePoint: creates a PostGIS point from longitude and latitude
-      // The third parameter to ST_DWithin is the distance in meters
-      query = query.filter(
-        'location',
-        'st_dwithin',
-        `POINT(${params.longitude} ${params.latitude})::geography, ${radiusMeters}`
-      );
-    }
-    
-    // Apply service type filter if specified
+      
+    // Add filters
     if (params.serviceType) {
       query = query.contains('services', [params.serviceType]);
     }
     
-    // Apply minimum rating filter if specified
-    if (params.minimumRating && typeof params.minimumRating === 'number') {
+    if (params.minimumRating) {
       query = query.gte('rating', params.minimumRating);
     }
     
-    // Add ordering by distance (nearest first) - requires the ST_Distance function
+    // Filter by distance using PostGIS ST_DWithin
     if (params.latitude && params.longitude) {
-      query = query.order(
-        `ST_Distance(
-          location,
-          ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)::geography
-        )`,
-        { ascending: true }
-      );
+      // Create PostGIS point as a string
+      const point = `ST_SetSRID(ST_MakePoint(${params.longitude}, ${params.latitude}), 4326)::geography`;
+      
+      // We need to use the raw SQL with ST_DWithin for proper distance filtering
+      // TypeScript doesn't handle the 4th parameter properly with the Supabase types
+      // Using .filter('...', '...', '...') for proper typing
+      query = query.filter(`ST_DWithin(location, ${point}, ${radiusMeters})`, 'is', 'true');
+      
+      // Order by distance
+      query = query.order('location', {
+        ascending: true,
+      });
     } else {
-      // Default ordering by rating if no location provided
+      // If no coordinates, sort by rating
       query = query.order('rating', { ascending: false });
     }
     
     // Apply pagination
-    query = query.range(startIndex, endIndex);
-    
-    // Execute query
-    const { data, error, count } = await query;
+    const { data, error, count } = await query
+      .range(skip, skip + pageSize - 1);
     
     if (error) {
-      console.error('Database error:', error);
+      console.error('Error in spatial query:', error);
+      // Fallback to client-side filtering if PostGIS query fails
       return searchNotariesClientSide(params);
     }
     

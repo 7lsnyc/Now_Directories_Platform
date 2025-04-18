@@ -6,18 +6,18 @@ DO $$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM information_schema.columns 
-    WHERE table_name = 'notaries' AND column_name = 'location'
+    WHERE table_name = 'notaries_new' AND column_name = 'location'
   ) THEN
     -- Add geography column
-    ALTER TABLE notaries ADD COLUMN location geography(Point,4326);
+    ALTER TABLE notaries_new ADD COLUMN location geography(Point,4326);
     
     -- Populate it from latitude and longitude (where both values exist)
-    UPDATE notaries 
+    UPDATE notaries_new 
     SET location = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
     WHERE latitude IS NOT NULL AND longitude IS NOT NULL;
     
     -- Create spatial index for better performance
-    CREATE INDEX notaries_location_idx ON notaries USING gist (location);
+    CREATE INDEX notaries_new_location_idx ON notaries_new USING gist (location);
   END IF;
 END $$;
 
@@ -68,7 +68,7 @@ BEGIN
     -- Calculate distance in meters and include it as an additional column
     ST_Distance(n.location, search_point) AS distance_meters
   FROM 
-    notaries n
+    notaries_new n
   WHERE 
     -- Filter by directory slug
     n.directory_slug = dir_slug
@@ -98,7 +98,8 @@ BEGIN
     
   -- Order by distance (closest first)
   ORDER BY 
-    distance_meters ASC;
+    distance_meters ASC
+  LIMIT 50;
 END;
 $$;
 

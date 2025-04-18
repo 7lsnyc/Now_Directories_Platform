@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Database } from '../lib/supabase';
 import { useSupabase } from '@/lib/supabase/clientProvider';
 
-type Notary = Database['public']['Tables']['notaries']['Row'];
+type Notary = Database['public']['Tables']['notaries_new']['Row'];
 
 export default function NotaryList() {
   const [notaries, setNotaries] = useState<Notary[]>([]);
@@ -28,7 +28,7 @@ export default function NotaryList() {
         }
         
         const { data, error } = await supabase
-          .from('notaries')
+          .from('notaries_new')
           .select('*')
           .limit(10);
         
